@@ -62,7 +62,7 @@ class W3CStats(val fields: Array[String]) {
   def valueOrSupplied(name: String, ifNil: String): String = {
     get().getOrElse(name, None) match {
       case s: String => s
-      case d: Date => date_format(d)
+      case d: Date => date_format_nospaces(d)
       case l: Long => l.toString()
       case i: Int => i.toString()
       case ip: InetAddress => ip.getHostAddress()
@@ -82,22 +82,29 @@ class W3CStats(val fields: Array[String]) {
   def log_header: String = {
     Array("#Version: 1.0",
           date_header(),
-          "#CRC: abc123",
+          "#CRC: abc123", // ToDo: Add a real CRC for our fields.
           fields_header()).mkString("\n")
   }
 
   /**
-   * Returns the Date Header with the current time.
+   * Returns the Date Header with the current time formatted as the W3C header expects.
    */
   def date_header(): String = {
     date_header(new Date())
   }
 
   /**
-   * Returns the W3C Extended Log Format Date Header.
+   * Returns the Date Header with the current time formatted as the W3C header expects.
    */
   def date_header(date: Date): String = {
     "#Date: %s".format(date_format(date))
+  }
+
+  /**
+   * Returns a Date formatted (without spaces) ready to insert into a w3c log line.
+   */
+  def date_header_nospaces(date: Date): String = {
+    date_format(date).replaceAll(" ", "_")
   }
 
   /**
