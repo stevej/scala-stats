@@ -183,13 +183,31 @@ object Stats {
   /**
    * Times the duration of function f, and adds that duration to a named timing measurement.
    */
-  def time[T](name: String)(f: => T) = {
-    val start = System.currentTimeMillis
-    val rv = f
-    addTiming((System.currentTimeMillis - start).toInt, name)
+  def time[T](name: String)(f: => T): T = {
+    val (rv, duration) = time(f)
+    addTiming(duration.toInt, name)
     rv
   }
 
+  /**
+   * Returns how long it took, in milliseconds, to run the function f.
+   */
+  def time[T](f: => T): (T, Long) = {
+    val start = System.currentTimeMillis
+    val rv = f
+    val duration = System.currentTimeMillis - start
+    (rv, duration)
+  }
+
+  /**
+   * Returns how long it took, in nanoseconds, to run the function f.
+   */
+  def timeNanos[T](f: => T): (T, Long) = {
+    val start = System.nanoTime
+    val rv = f
+    val duration = System.nanoTime - start
+    (rv, duration)
+  }
 
   /**
    * Returns a Map[String, Long] of JVM stats.
