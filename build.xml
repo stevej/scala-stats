@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="scala-stats" default="package" xmlns:ivy="antlib:org.apache.ivy.ant">
+  <description>Scala Stats library</description>
+
+  <import file="ant/bootstrap.xml" />
+</project>
