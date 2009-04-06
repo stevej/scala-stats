@@ -38,12 +38,20 @@ class W3CStats(val fields: Array[String]) {
   }
 
   def log(name: String, date: Date) {
-    get + (name -> date)
+    log(name, date_format(date))
   }
 
   def log(name: String, ip: InetAddress) {
     get + (name -> ip)
   }
+
+  def valueOrSupplied(name: String, ifNil: String) = {
+    get.get(name) match {
+      case Some(s) => s
+      case None => ifNil
+    }
+  }
+
 
   /**
    * Returns a w3c logline.
@@ -52,7 +60,7 @@ class W3CStats(val fields: Array[String]) {
     val logline = new StringBuilder()
     // Yes, that's _3_ gets. The first is on ThreadLocal, the second is on Map, the third is on Option.
     // FIXME: don't use Option.get. Instead check that it exists and use a - if it doesn't.
-    fields.foreach(field => { logline.append(tl.get().get(field).get()); logline.append(" ") } )
+    fields.foreach(field => { logline.append(valueOrSupplied(field, "-")) ; logline.append(" ") } )
     logline.toString
   }
 
@@ -77,9 +85,17 @@ class W3CStats(val fields: Array[String]) {
    * Returns the W3C Extended Log Format Date Header.
    */
   def date_header(date: Date): String = {
-    val formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss")
-    "#Date: %s".format(formatter.format(date))
+    "#Date: %s".format(date_format(date))
   }
+
+  /**
+   * Formats the supplied date
+   */
+  def date_format(date: Date): String = {
+    val formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss")
+    formatter.format(date)
+  }
+
 
   /**
    * Returns a W3C Fields header.
