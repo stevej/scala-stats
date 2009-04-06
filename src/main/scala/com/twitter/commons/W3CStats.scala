@@ -21,13 +21,23 @@ class W3CStats(val fields: Array[String]) {
     override def initialValue(): mutable.Map[String, Any] = new mutable.HashMap[String, Any]
   }
 
-  def get: mutable.Map[String, Any] = tl.get()
+  /**
+   * Returns the current map containing this thread's w3c logging stats.
+   */
+  def get(): mutable.Map[String, Any] = tl.get()
+
+  /**
+   * Resets this thread's w3c stats knowledge.
+   */
+  def clear() {
+    get().clear()
+  }
 
   /**
    * Adds the current name, value pair to the stats map.
    */
   def log(name: String, value: String) {
-    get + (name -> value)
+    get() + (name -> value)
   }
 
   /**
@@ -45,24 +55,26 @@ class W3CStats(val fields: Array[String]) {
     get + (name -> ip)
   }
 
-  def valueOrSupplied(name: String, ifNil: String) = {
-    get.get(name) match {
-      case Some(s) => s
-      case None => ifNil
+  /**
+   * Fetch the String formatted value from this thread's w3c map. If it doesn't exist, return
+   * the ifNil string. w3c extended log says that you should use "-" for this character.
+   */
+  def valueOrSupplied(name: String, ifNil: String): String = {
+    get().getOrElse(name, None) match {
+      case s: String => s
+      case d: Date => date_format(d)
+      case l: Long => l.toString()
+      case i: Int => i.toString()
+      case ip: InetAddress => ip.getHostAddress()
+      case _ => ifNil
     }
   }
 
 
   /**
-   * Returns a w3c logline.
+   * Returns a w3c logline containing all known fields.
    */
-  def log_entry: String = {
-    val logline = new StringBuilder()
-    // Yes, that's _3_ gets. The first is on ThreadLocal, the second is on Map, the third is on Option.
-    // FIXME: don't use Option.get. Instead check that it exists and use a - if it doesn't.
-    fields.foreach(field => { logline.append(valueOrSupplied(field, "-")) ; logline.append(" ") } )
-    logline.toString
-  }
+  def log_entry: String = fields.map(valueOrSupplied(_, "-")).mkString(" ")
 
   /**
    * Returns an String containing W3C Headers separated by newlines.
