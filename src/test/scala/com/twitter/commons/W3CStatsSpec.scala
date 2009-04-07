@@ -9,7 +9,7 @@ import java.util.Date
 
 object W3CStatsSpec extends Specification {
   "w3c Stats" should {
-    val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time-nanoseconds", "unsupplied-field", "finish_timestamp"))
+    val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
     "add 2 numbers" in {
       1 + 1 mustEqual 2
     }
@@ -28,7 +28,7 @@ object W3CStatsSpec extends Specification {
       response2 mustEqual 3
 
       val logline = w3c.log_entry
-      println(logline)
+      //println(logline)
       logline mustNot beNull
 
       val entries: Array[String] = logline.split(" ")

@@ -3,6 +3,7 @@ package com.twitter.commons
 
 import scala.collection.mutable
 import java.util.Date
+import java.util.zip.CRC32
 import java.net.InetAddress
 import java.text.SimpleDateFormat
 
@@ -62,7 +63,7 @@ class W3CStats(val fields: Array[String]) {
   def valueOrSupplied(name: String, ifNil: String): String = {
     get().getOrElse(name, None) match {
       case s: String => s
-      case d: Date => date_format_nospaces(d)
+      case d: Date => date_header_nospaces(d)
       case l: Long => l.toString()
       case i: Int => i.toString()
       case ip: InetAddress => ip.getHostAddress()
@@ -82,8 +83,17 @@ class W3CStats(val fields: Array[String]) {
   def log_header: String = {
     Array("#Version: 1.0",
           date_header(),
-          "#CRC: abc123", // ToDo: Add a real CRC for our fields.
+          crc32_header(), // ToDo: Add a real CRC for our fields.
           fields_header()).mkString("\n")
+  }
+
+  /**
+   * Generate a CRC32 of our current set of headers
+   */
+  def crc32_header(): String = {
+    val crc = new CRC32()
+    crc.update(fields_header.getBytes("UTF-8"))
+    "#CRC: %d".format(crc.getValue())
   }
 
   /**
