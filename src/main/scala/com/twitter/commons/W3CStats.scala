@@ -103,7 +103,7 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Returns a Date formatted (without spaces) ready to insert into a w3c log line.
    */
-  def date_header_nospaces(date: Date): String = {
+  def date_format_nospaces(date: Date): String = {
     date_format(date).replaceAll(" ", "_")
   }
 
