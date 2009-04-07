@@ -10,9 +10,6 @@ import java.util.Date
 object W3CStatsSpec extends Specification {
   "w3c Stats" should {
     val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
-    "add 2 numbers" in {
-      1 + 1 mustEqual 2
-    }
 
     "log and check some timings" in {
       val response: Int = w3c.time[Int]("backend-response-time") {

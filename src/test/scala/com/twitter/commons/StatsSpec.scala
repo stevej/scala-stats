@@ -8,7 +8,7 @@ import scala.collection.immutable
 
 object StatsSpec extends Specification {
   "Stats" should {
-    "add 2 numbers" in {
+    "be embarassed at how few tests there are for this class." in {
       1 + 1 mustEqual 2
     }
   }
