@@ -49,7 +49,7 @@ class W3CStats(val fields: Array[String]) {
   }
 
   def log(name: String, date: Date) {
-    log(name, date_format(date))
+    get + (name -> date)
   }
 
   def log(name: String, ip: InetAddress) {
@@ -60,7 +60,7 @@ class W3CStats(val fields: Array[String]) {
    * Fetch the String formatted value from this thread's w3c map. If it doesn't exist, return
    * the ifNil string. w3c extended log says that you should use "-" for this character.
    */
-  def valueOrSupplied(name: String, ifNil: String): String = {
+  private def valueIfPresentElse(name: String, ifNil: String): String = {
     get().getOrElse(name, None) match {
       case s: String => s
       case d: Date => date_header_nospaces(d)
@@ -75,7 +75,7 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Returns a w3c logline containing all known fields.
    */
-  def log_entry: String = fields.map(valueOrSupplied(_, "-")).mkString(" ")
+  def log_entry: String = fields.map(valueIfPresentElse(_, "-")).mkString(" ")
 
   /**
    * Returns an String containing W3C Headers separated by newlines.
@@ -113,14 +113,14 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Returns a Date formatted (without spaces) ready to insert into a w3c log line.
    */
-  def date_header_nospaces(date: Date): String = {
+  private def date_format_nospaces(date: Date): String = {
     date_format(date).replaceAll(" ", "_")
   }
 
   /**
    * Formats the supplied date
    */
-  def date_format(date: Date): String = {
+  private def date_format(date: Date): String = {
     val formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss")
     formatter.format(date)
   }
@@ -129,7 +129,7 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Returns a W3C Fields header.
    */
-  def fields_header(): String = {
+  private def fields_header(): String = {
     val header = new StringBuffer("#Fields: ")
     header.append(fields.mkString(" "))
     header.toString

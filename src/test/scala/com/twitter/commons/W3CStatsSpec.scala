@@ -22,7 +22,7 @@ object W3CStatsSpec extends Specification {
       }
       response mustEqual 2
       w3c.log("finish_timestamp", new Date())
-      val response2: Int = w3c.timeNanos[Int]("backend-response-time-nanoseconds") {
+      val response2: Int = w3c.timeNanos[Int]("backend-response-time_ns") {
         1 + 2
       }
       response2 mustEqual 3
@@ -48,6 +48,13 @@ object W3CStatsSpec extends Specification {
     "log_header is present and has Version and CRC" in {
       val log_header = w3c.log_header
       log_header mustNot beNull
+    }
+
+    "map when cleared returns the empty string" in {
+      w3c.clear()
+      val logline = w3c.log_entry
+      val entries: Array[String] = logline.split(" ")
+      entries.exists(s => s != "-") mustEqual false
     }
   }
 }
