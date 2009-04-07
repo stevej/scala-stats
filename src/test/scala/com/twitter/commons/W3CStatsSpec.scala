@@ -9,7 +9,7 @@ import java.util.Date
 
 object W3CStatsSpec extends Specification {
   "w3c Stats" should {
-    val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time-nanoseconds", "unsupplied-field", "finish_timestamp"))
+    val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
     "add 2 numbers" in {
       1 + 1 mustEqual 2
     }
@@ -22,7 +22,7 @@ object W3CStatsSpec extends Specification {
       }
       response mustEqual 2
       w3c.log("finish_timestamp", new Date())
-      val response2: Int = w3c.timeNanos[Int]("backend-response-time-nanoseconds") {
+      val response2: Int = w3c.timeNanos[Int]("backend-response-time_ns") {
         1 + 2
       }
       response2 mustEqual 3
@@ -48,6 +48,13 @@ object W3CStatsSpec extends Specification {
     "log_header is present and has Version and CRC" in {
       val log_header = w3c.log_header
       log_header mustNot beNull
+    }
+
+    "map when cleared returns the empty string" in {
+      w3c.clear()
+      val logline = w3c.log_entry
+      val entries: Array[String] = logline.split(" ")
+      entries.exists(s => s != "-") mustEqual false
     }
   }
 }
