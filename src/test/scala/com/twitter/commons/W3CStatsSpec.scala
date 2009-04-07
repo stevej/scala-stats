@@ -14,21 +14,22 @@ object W3CStatsSpec extends Specification {
       1 + 1 mustEqual 2
     }
 
-    "log some specific timings" in {
+    "log and check some timings" in {
       val response: Int = w3c.time[Int]("backend-response-time") {
         w3c.log("backend-response-method", "GET")
         w3c.log("request-uri", "/home")
         1 + 1
       }
       response mustEqual 2
-      w3c.log("finish_timestamp", new Date())
+
+      w3c.log("finish_timestamp", new Date(0))
+
       val response2: Int = w3c.timeNanos[Int]("backend-response-time_ns") {
         1 + 2
       }
       response2 mustEqual 3
 
       val logline = w3c.log_entry
-      //println(logline)
       logline mustNot beNull
 
       val entries: Array[String] = logline.split(" ")
@@ -37,7 +38,7 @@ object W3CStatsSpec extends Specification {
       entries(2) mustEqual "/home"
       entries(3).toInt must be_>=(10)  //must take at least 10 ns!
       entries(4) mustEqual "-"
-      entries(5) mustNot beNull
+      entries(5) mustEqual "31-Dec-1969_16:00:00"
     }
 
     "date_header uses the w3c format" in {
@@ -45,16 +46,28 @@ object W3CStatsSpec extends Specification {
       header mustEqual "#Date: 31-Dec-1969 16:00:00"
     }
 
-    "log_header is present and has Version and CRC" in {
+    "crc_header is stable" in {
+      w3c.crc32_header(w3c.fields_header()) mustEqual "#CRC: 841190001"
+    }
+
+    "fields_header is stable" in {
+      val header = "#Fields: backend-response-time backend-response-method request-uri " +
+      "backend-response-time_ns unsupplied-field finish_timestamp"
+      w3c.fields_header() mustEqual header
+    }
+
+    "log_header is present and has Version, Fields, and CRC" in {
       val log_header = w3c.log_header
-      log_header mustNot beNull
+      log_header must include("#Version")
+      log_header must include("#CRC")
+      log_header must include("#Fields")
     }
 
     "map when cleared returns the empty string" in {
       w3c.clear()
       val logline = w3c.log_entry
-      val entries: Array[String] = logline.split(" ")
-      entries.exists(s => s != "-") mustEqual false
+      // strip out all unfound entries, and remove all whitespace. after that, it should be empty.
+      logline.replaceAll("-", "").trim() mustEqual ""
     }
   }
 }

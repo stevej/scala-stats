@@ -8,7 +8,8 @@ import java.net.InetAddress
 import java.text.SimpleDateFormat
 
 /**
- * Implements a W3C Stats Log.
+ * Implements a W3C Extended Log and contains convenience methods for timing blocks and
+ * exporting those timings in the w3c log.
  *
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
@@ -30,9 +31,7 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Resets this thread's w3c stats knowledge.
    */
-  def clear() {
-    get().clear()
-  }
+  def clear(): Unit = get().clear()
 
   /**
    * Adds the current name, value pair to the stats map.
@@ -81,16 +80,17 @@ class W3CStats(val fields: Array[String]) {
    * Returns an String containing W3C Headers separated by newlines.
    */
   def log_header: String = {
+    val fields = fields_header()
     Array("#Version: 1.0",
           date_header(),
-          crc32_header(), // ToDo: Add a real CRC for our fields.
-          fields_header()).mkString("\n")
+          crc32_header(fields_header),
+          fields).mkString("\n")
   }
 
   /**
-   * Generate a CRC32 of our current set of headers
+   * Generate a CRC32 of our current set of fields.
    */
-  def crc32_header(): String = {
+  def crc32_header(fields_header: String): String = {
     val crc = new CRC32()
     crc.update(fields_header.getBytes("UTF-8"))
     "#CRC: %d".format(crc.getValue())
@@ -129,7 +129,7 @@ class W3CStats(val fields: Array[String]) {
   /**
    * Returns a W3C Fields header.
    */
-  private def fields_header(): String = {
+  def fields_header(): String = {
     val header = new StringBuffer("#Fields: ")
     header.append(fields.mkString(" "))
     header.toString
