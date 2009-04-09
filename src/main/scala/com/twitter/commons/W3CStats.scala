@@ -34,25 +34,35 @@ class W3CStats(val fields: Array[String]) {
   def clear(): Unit = get().clear()
 
   /**
+   * Private method to ensure that fields being inserted are actually being tracked, throwing an exception otherwise.
+   */
+  private def log_safe[T](name: String, value: T) {
+    if (!fields.contains(name)) {
+      throw new IllegalArgumentException("cannot log and unregistered field: %s".format(name))
+    }
+    get + (name -> value)
+  }
+
+  /**
    * Adds the current name, value pair to the stats map.
    */
   def log(name: String, value: String) {
-    get() + (name -> value)
+    log_safe(name, value)
   }
 
   /**
    * Adds the current name, timing pair to the stats map.
    */
   def log(name: String, timing: Long) {
-    get + (name -> timing)
+    log_safe(name, timing)
   }
 
   def log(name: String, date: Date) {
-    get + (name -> date)
+    log_safe(name, date)
   }
 
   def log(name: String, ip: InetAddress) {
-    get + (name -> ip)
+    log_safe(name, ip)
   }
 
   /**

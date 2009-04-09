@@ -61,7 +61,7 @@ object W3CStatsSpec extends Specification {
     }
 
     "map when cleared returns the empty string" in {
-      w3c.log("name", "foo")
+      w3c.log("request-uri", "foo")
       w3c.clear()
       val logline = w3c.log_entry
       // strip out all unfound entries, and remove all whitespace. after that, it should be empty.
@@ -72,6 +72,10 @@ object W3CStatsSpec extends Specification {
       val (date, time) = w3c.datetime_format(new Date(0))
       date mustEqual "31-Dec-1969"
       time mustEqual "16:00:00"
+    }
+
+    "logging a field not tracked in the fields member should throw an exception" in {
+      w3c.log("jibberish_nonsense", "foo") must throwA(new IllegalArgumentException)
     }
   }
 }
