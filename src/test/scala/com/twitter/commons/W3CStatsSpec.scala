@@ -74,8 +74,9 @@ object W3CStatsSpec extends Specification {
       time mustEqual "16:00:00"
     }
 
-    "logging a field not tracked in the fields member should throw an exception" in {
-      w3c.log("jibberish_nonsense", "foo") must throwA(new IllegalArgumentException)
+    "logging a field not tracked in the fields member shouldn't show up in the logfile" in {
+      w3c.log("jibberish_nonsense", "foo")
+      w3c.log_entry must notInclude("foo")
     }
   }
 }

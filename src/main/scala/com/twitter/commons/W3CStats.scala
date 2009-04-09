@@ -1,6 +1,7 @@
 /** Copyright 2009, Twitter, Inc */
 package com.twitter.commons
 
+import net.lag.logging.Logger
 import scala.collection.mutable
 import java.util.Date
 import java.util.zip.CRC32
@@ -15,6 +16,7 @@ import java.text.SimpleDateFormat
  */
 class W3CStats(val fields: Array[String]) {
   //val fields = Array("backend-response-time", "backend-response-method", "request-uri")
+  val log = Logger.get
 
   /**
    * Store our map of named events.
@@ -38,7 +40,7 @@ class W3CStats(val fields: Array[String]) {
    */
   private def log_safe[T](name: String, value: T) {
     if (!fields.contains(name)) {
-      throw new IllegalArgumentException("cannot log and unregistered field: %s".format(name))
+      log.error("trying to log unregistered field: %s".format(name))
     }
     get + (name -> value)
   }
