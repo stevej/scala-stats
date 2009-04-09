@@ -61,10 +61,17 @@ object W3CStatsSpec extends Specification {
     }
 
     "map when cleared returns the empty string" in {
+      w3c.log("name", "foo")
       w3c.clear()
       val logline = w3c.log_entry
       // strip out all unfound entries, and remove all whitespace. after that, it should be empty.
       logline.replaceAll("-", "").trim() mustEqual ""
+    }
+
+    "datetime_format returns a tuple of Date and Time" in {
+      val (date, time) = w3c.datetime_format(new Date(0))
+      date mustEqual "31-Dec-1969"
+      time mustEqual "16:00:00"
     }
   }
 }

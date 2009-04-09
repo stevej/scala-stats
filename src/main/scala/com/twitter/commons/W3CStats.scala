@@ -118,6 +118,17 @@ class W3CStats(val fields: Array[String]) {
   }
 
   /**
+   * Returns a tuple of (Date, Time) both formatted with a DateFormatter.
+   *
+   * Date is formatted as dd-MMM-yyyy (31-Dec-1969)
+   * Time is formatted as HH:mm:ss (16:00:00)
+   */
+  def datetime_format(date: Date): (String, String) = {
+    val result = date_format(date).split(" ")
+    (result(0), result(1))
+  }
+
+  /**
    * Formats the supplied date
    */
   private def date_format(date: Date): String = {
