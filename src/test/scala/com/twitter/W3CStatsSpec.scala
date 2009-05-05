@@ -2,17 +2,31 @@
 package com.twitter.service
 
 import net.lag.extensions._
-import net.lag.logging.{FileFormatter, Logger, StringHandler}
+import net.lag.logging.{Formatter, Level, Logger, StringHandler}
 import org.specs._
 import scala.collection.immutable
+import java.text.SimpleDateFormat
 import java.util.Date
 
 
 object W3CStatsSpec extends Specification {
   "w3c Stats" should {
-    val logger = Logger.get
-    logger.addHandler(new StringHandler(new FileFormatter))
-    val w3c = new W3CStats(logger, Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
+    val logger = Logger.get("w3c")
+    logger.setLevel(Level.INFO)
+    val formatter = new Formatter {
+      override def lineTerminator = ""
+      override def dateFormat = new SimpleDateFormat("yyyyMMdd-HH:mm:ss.SSS")
+      override def formatPrefix(level: java.util.logging.Level, date: String, name: String) = name + ": "
+    }
+    val handler = new StringHandler(formatter)
+    logger.addHandler(handler)
+    logger.setUseParentHandlers(false)
+
+    val w3c = new W3CStats(logger, Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp", "widgets", "wodgets"))
+
+    doBefore {
+      handler.clear()
+    }
 
     "log and check some timings" in {
       val response: Int = w3c.time[Int]("backend-response-time") {
@@ -47,12 +61,12 @@ object W3CStatsSpec extends Specification {
     }
 
     "crc_header is stable" in {
-      w3c.crc32_header(w3c.fields_header()) mustEqual "#CRC: 841190001"
+      w3c.crc32_header(w3c.fields_header()) mustEqual "#CRC: 1616924806"
     }
 
     "fields_header is stable" in {
       val header = "#Fields: backend-response-time backend-response-method request-uri " +
-      "backend-response-time_ns unsupplied-field finish_timestamp"
+      "backend-response-time_ns unsupplied-field finish_timestamp widgets wodgets"
       w3c.fields_header() mustEqual header
     }
 
@@ -81,9 +95,30 @@ object W3CStatsSpec extends Specification {
       w3c.log("jibberish_nonsense", "foo")
       w3c.log_entry must notInclude("foo")
     }
-    
+
     "handle a transaction" in {
-      // FIXME!
+      w3c.log("request-uri", "foo")
+      w3c.transaction {
+        w3c.log("widgets", 8)
+        w3c.log("wodgets", 3)
+      }
+      handler.toString.replaceAll(" -", "") mustEqual "w3c: 8 3"
+    }
+
+    "sum multiple counts within a transaction" in {
+      w3c.transaction {
+        w3c.log("widgets", 8)
+        w3c.log("widgets", 8)
+      }
+      handler.toString.replaceAll(" -", "") mustEqual "w3c: 16"
+    }
+
+    "concat multiple string values within a transaction" in {
+      w3c.transaction {
+        w3c.log("widgets", "hello")
+        w3c.log("widgets", "kitty")
+      }
+      handler.toString.replaceAll(" -", "") mustEqual "w3c: hello,kitty"
     }
   }
 }

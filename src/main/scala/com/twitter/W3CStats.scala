@@ -14,7 +14,6 @@ import java.text.SimpleDateFormat
  *
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
- 
 class W3CStats(val logger: Logger, val fields: Array[String]) {
   //val fields = Array("backend-response-time", "backend-response-method", "request-uri")
   val log = Logger.get
