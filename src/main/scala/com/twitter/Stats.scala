@@ -1,5 +1,5 @@
 /** Copyright 2009, Twitter, Inc. */
-package com.twitter.commons
+package com.twitter.service
 
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong

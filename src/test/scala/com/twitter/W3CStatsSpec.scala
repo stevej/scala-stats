@@ -1,7 +1,8 @@
 /** Copyright 2009 Twitter, Inc. */
-package com.twitter.commons
+package com.twitter.service
 
 import net.lag.extensions._
+import net.lag.logging.{FileFormatter, Logger, StringHandler}
 import org.specs._
 import scala.collection.immutable
 import java.util.Date
@@ -9,7 +10,9 @@ import java.util.Date
 
 object W3CStatsSpec extends Specification {
   "w3c Stats" should {
-    val w3c = new W3CStats(Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
+    val logger = Logger.get
+    logger.addHandler(new StringHandler(new FileFormatter))
+    val w3c = new W3CStats(logger, Array("backend-response-time", "backend-response-method", "request-uri", "backend-response-time_ns", "unsupplied-field", "finish_timestamp"))
 
     "log and check some timings" in {
       val response: Int = w3c.time[Int]("backend-response-time") {
@@ -77,6 +80,10 @@ object W3CStatsSpec extends Specification {
     "logging a field not tracked in the fields member shouldn't show up in the logfile" in {
       w3c.log("jibberish_nonsense", "foo")
       w3c.log_entry must notInclude("foo")
+    }
+    
+    "handle a transaction" in {
+      // FIXME!
     }
   }
 }

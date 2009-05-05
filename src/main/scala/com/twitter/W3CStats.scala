@@ -1,5 +1,5 @@
 /** Copyright 2009, Twitter, Inc */
-package com.twitter.commons
+package com.twitter.service
 
 import net.lag.logging.Logger
 import scala.collection.mutable
@@ -14,7 +14,8 @@ import java.text.SimpleDateFormat
  *
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
-class W3CStats(val fields: Array[String]) {
+ 
+class W3CStats(val logger: Logger, val fields: Array[String]) {
   //val fields = Array("backend-response-time", "backend-response-method", "request-uri")
   val log = Logger.get
 
@@ -49,14 +50,14 @@ class W3CStats(val fields: Array[String]) {
    * Adds the current name, value pair to the stats map.
    */
   def log(name: String, value: String) {
-    log_safe(name, value)
+    log_safe(name, get.get(name).map(_ + "," + value).getOrElse(value))
   }
 
   /**
    * Adds the current name, timing pair to the stats map.
    */
   def log(name: String, timing: Long) {
-    log_safe(name, timing)
+    log_safe(name, get.getOrElse(name, 0L).asInstanceOf[Long] + timing)
   }
 
   def log(name: String, date: Date) {
@@ -177,5 +178,14 @@ class W3CStats(val fields: Array[String]) {
     val (rv, duration) = Stats.timeNanos(f)
     log(name, duration)
     rv
+  }
+
+  def transaction[T](f: => T): T = {
+    clear()
+    try {
+      f
+    } finally {
+      logger.info(log_entry)
+    }
   }
 }
