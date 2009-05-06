@@ -43,7 +43,7 @@ object Stats {
     private var maximum = Math.MIN_INT
     private var minimum = Math.MAX_INT
     private var sum: Long = 0
-    private var count: Long = 0
+    private var count: Int = 0
 
     /**
      * Resets the state of this Timing. Clears the durations and counts collected sofar.
@@ -74,7 +74,7 @@ object Stats {
      * Returns a tuple of (Count, Min, Max, Average) for the measured event.
      * If `reset` is true, it clears the current event timings also.
      */
-    def getCountMinMaxAvg(reset: Boolean): (Long, Int, Int, Int) = synchronized {
+    def getCountMinMaxAvg(reset: Boolean): (Int, Int, Int, Int) = synchronized {
       if (count == 0) {
         (0, 0, 0, 0)
       } else {
@@ -248,25 +248,20 @@ object Stats {
     immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
   }
 
+  case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int)
+
   /**
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
    * cleared, so the next call will return the stats about timings since now.
    */
-  def getTimingStats(reset: Boolean): Map[String, Long] = {
-    val out = new mutable.HashMap[String, Long]
+  def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
+    val out = new mutable.HashMap[String, TimingStat]
     for ((key, timing) <- timingMap) {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
-      out += (key + "_count" -> count.toLong)
-      if (count > 0) {
-        out += (key + "_min" -> minimum.toLong)
-        out += (key + "_max" -> maximum.toLong)
-        out += (key + "_avg" -> average.toLong)
-      }
+      out += (key -> TimingStat(count, minimum, maximum, average))
     }
     out
   }
-
-  def getTimingStats(): Map[String, Long] = getTimingStats(true)
 
   /**
    * Returns a Map[String, Double] of current gauge readings.

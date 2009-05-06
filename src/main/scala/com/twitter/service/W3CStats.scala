@@ -164,6 +164,7 @@ class W3CStats(val logger: Logger, val fields: Array[String]) {
   def time[T](name: String)(f: => T): T = {
     val (rv, duration) = Stats.time(f)
     log(name, duration)
+    Stats.addTiming(duration.toInt, name)
     rv
   }
 
@@ -176,7 +177,16 @@ class W3CStats(val logger: Logger, val fields: Array[String]) {
   def timeNanos[T](name: String)(f: => T): T = {
     val (rv, duration) = Stats.timeNanos(f)
     log(name, duration)
+    Stats.addTiming(duration.toInt, name)
     rv
+  }
+
+  /**
+   * Increments a count in the stats.
+   */
+  def incr(name: String, count: Int) {
+    log_safe(name, get.getOrElse(name, 0L).asInstanceOf[Long] + count)
+    Stats.incr(count, name)
   }
 
   def transaction[T](f: => T): T = {
