@@ -1,4 +1,19 @@
-/** Copyright 2009, Twitter, Inc */
+/*
+ * Copyright 2009 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.twitter.service
 
 import net.lag.logging.Logger
@@ -8,13 +23,14 @@ import java.util.zip.CRC32
 import java.net.InetAddress
 import java.text.SimpleDateFormat
 
+
 /**
  * Implements a W3C Extended Log and contains convenience methods for timing blocks and
  * exporting those timings in the w3c log.
  *
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
-class W3CStats(val logger: Logger, val fields: Array[String]) {
+class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
   //val fields = Array("backend-response-time", "backend-response-method", "request-uri")
   val log = Logger.get
 
@@ -158,37 +174,30 @@ class W3CStats(val logger: Logger, val fields: Array[String]) {
     header.toString
   }
 
-  /**
-   * Runs the function f, times how long it took, and logs that duration, in milliseconds, with the given name.
-   */
   def time[T](name: String)(f: => T): T = {
-    val (rv, duration) = Stats.time(f)
-    log(name, duration)
-    Stats.addTiming(duration.toInt, name)
+    val (rv, msec) = Stats.duration(f)
+    log(name, msec)
+    Stats.addTiming(name, msec.toInt)
     rv
   }
 
-  /**
-   * Runs the function f, times how long it took, and logs that duration, in nanoseconds, with the given name.
-   *
-   * When using nanoseconds, be sure to encode your field with that fact. Consider
-   * using the suffix _ns in your field.
-   */
   def timeNanos[T](name: String)(f: => T): T = {
-    val (rv, duration) = Stats.timeNanos(f)
-    log(name, duration)
-    Stats.addTiming(duration.toInt, name)
+    val (rv, nsec) = Stats.durationNanos(f)
+    log(name, nsec)
+    Stats.addTiming(name, nsec.toInt)
     rv
   }
 
-  /**
-   * Increments a count in the stats.
-   */
-  def incr(name: String, count: Int) {
+  def incr(name: String, count: Int) = {
     log_safe(name, get.getOrElse(name, 0L).asInstanceOf[Long] + count)
-    Stats.incr(count, name)
+    Stats.incr(name, count)
   }
 
+  /**
+   * Coalesce all w3c events (counters, timings, etc.) that happen in this thread within this
+   * transaction, and log them as a single line at the end. This is useful for logging everything
+   * that happens within an HTTP request/response cycle, or similar.
+   */
   def transaction[T](f: => T): T = {
     clear()
     try {

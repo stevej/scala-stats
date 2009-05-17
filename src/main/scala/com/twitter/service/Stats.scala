@@ -1,4 +1,19 @@
-/** Copyright 2009, Twitter, Inc. */
+/*
+ * Copyright 2009 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.twitter.service
 
 import java.lang.management._
@@ -11,10 +26,36 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
 
 
+trait Stats {
+  /**
+   * Runs the function f and logs that duration, in milliseconds, with the given name.
+   */
+  def time[T](name: String)(f: => T): T
+
+  /**
+   * Runs the function f and logs that duration, in nanoseconds, with the given name.
+   *
+   * When using nanoseconds, be sure to encode your field with that fact. Consider
+   * using the suffix `_ns` in your field.
+   */
+  def timeNanos[T](name: String)(f: => T): T
+
+  /**
+   * Increments a count in the stats.
+   */
+  def incr(name: String, count: Int): Long
+
+  /**
+   * Increments a count in the stats.
+   */
+  def incr(name: String): Long = incr(name, 1)
+}
+
+
 /**
  * Basic Stats gathering object that returns performance data for the application.
  */
-object Stats {
+object Stats extends Stats {
   val log = Logger.getLogger("Stats")
 
   /**
@@ -163,12 +204,12 @@ object Stats {
   /**
    * Returns a function that increments the named counter by 1.
    */
-  def buildIncr(name: String): () => Long = { () => incr(1L, name) }
+  def buildIncr(name: String): () => Long = { () => incr(name, 1) }
 
   /**
    * Increments the named counter by <code>by</code>.
    */
-  def incr(by: Long, name: String): Long = {
+  def incr(name: String, by: Int): Long = {
     getCounter(name).value.addAndGet(by)
   }
 
@@ -176,7 +217,7 @@ object Stats {
    * Creates a Timing object of name and duration and stores
    * it in the keymap. Returns the total number of timings stored so far.
    */
-  def addTiming(duration: Int, name: String): Long = {
+  def addTiming(name: String, duration: Int): Long = {
     getTiming(name).add(duration)
   }
 
@@ -184,15 +225,24 @@ object Stats {
    * Times the duration of function f, and adds that duration to a named timing measurement.
    */
   def time[T](name: String)(f: => T): T = {
-    val (rv, duration) = time(f)
-    addTiming(duration.toInt, name)
+    val (rv, msec) = duration(f)
+    addTiming(name, msec.toInt)
+    rv
+  }
+
+  /**
+   * Times the duration of function f, and adds that duration to a named timing measurement.
+   */
+  def timeNanos[T](name: String)(f: => T): T = {
+    val (rv, nsec) = durationNanos(f)
+    addTiming(name, nsec.toInt)
     rv
   }
 
   /**
    * Returns how long it took, in milliseconds, to run the function f.
    */
-  def time[T](f: => T): (T, Long) = {
+  def duration[T](f: => T): (T, Long) = {
     val start = System.currentTimeMillis
     val rv = f
     val duration = System.currentTimeMillis - start
@@ -202,7 +252,7 @@ object Stats {
   /**
    * Returns how long it took, in nanoseconds, to run the function f.
    */
-  def timeNanos[T](f: => T): (T, Long) = {
+  def durationNanos[T](f: => T): (T, Long) = {
     val start = System.nanoTime
     val rv = f
     val duration = System.nanoTime - start
