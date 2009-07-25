@@ -112,6 +112,15 @@ object Stats extends Stats {
     }
 
     /**
+     * Evaluates function f, returning value of type T, and logging the duration in the current Timer instance.
+     */
+    def time[T](f: => T): T = {
+      val (rv, duration) = Stats.time(f)
+      add(duration.asInstanceOf[Int]) // is safe as long as it didn't take longer then 46 days.
+      rv
+    }
+
+    /**
      * Returns a tuple of (Count, Min, Max, Average) for the measured event.
      * If `reset` is true, it clears the current event timings also.
      */
