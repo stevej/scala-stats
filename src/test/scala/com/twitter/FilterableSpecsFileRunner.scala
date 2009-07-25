@@ -1,5 +1,5 @@
 /** Copyright 2008 Twitter, Inc. */
-package com.twitter.commons
+package com.twitter.service
 
 import org.specs.Specification
 import org.specs.runner.SpecsFileRunner

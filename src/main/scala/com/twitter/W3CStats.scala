@@ -1,5 +1,5 @@
 /** Copyright 2009, Twitter, Inc */
-package com.twitter.commons
+package com.twitter.service
 
 import net.lag.logging.Logger
 import scala.collection.mutable
