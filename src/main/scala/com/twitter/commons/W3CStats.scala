@@ -63,7 +63,7 @@ class W3CStats(val fields: Array[String]) {
   private def valueIfPresentElse(name: String, ifNil: String): String = {
     get().getOrElse(name, None) match {
       case s: String => s
-      case d: Date => date_header_nospaces(d)
+      case d: Date => date_format_nospaces(d)
       case l: Long => l.toString()
       case i: Int => i.toString()
       case ip: InetAddress => ip.getHostAddress()
