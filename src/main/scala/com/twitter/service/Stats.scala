@@ -1,5 +1,20 @@
-/** Copyright 2009, Twitter, Inc. */
-package com.twitter.commons
+/*
+ * Copyright 2009 Twitter, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License. You may obtain
+ * a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.twitter.service
 
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
@@ -11,10 +26,36 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
 
 
+trait Stats {
+  /**
+   * Runs the function f and logs that duration, in milliseconds, with the given name.
+   */
+  def time[T](name: String)(f: => T): T
+
+  /**
+   * Runs the function f and logs that duration, in nanoseconds, with the given name.
+   *
+   * When using nanoseconds, be sure to encode your field with that fact. Consider
+   * using the suffix `_ns` in your field.
+   */
+  def timeNanos[T](name: String)(f: => T): T
+
+  /**
+   * Increments a count in the stats.
+   */
+  def incr(name: String, count: Int): Long
+
+  /**
+   * Increments a count in the stats.
+   */
+  def incr(name: String): Long = incr(name, 1)
+}
+
+
 /**
  * Basic Stats gathering object that returns performance data for the application.
  */
-object Stats {
+object Stats extends Stats {
   val log = Logger.getLogger("Stats")
 
   /**
@@ -43,7 +84,7 @@ object Stats {
     private var maximum = Math.MIN_INT
     private var minimum = Math.MAX_INT
     private var sum: Long = 0
-    private var count: Long = 0
+    private var count: Int = 0
 
     /**
      * Resets the state of this Timing. Clears the durations and counts collected sofar.
@@ -71,10 +112,19 @@ object Stats {
     }
 
     /**
+     * Evaluates function f, returning value of type T, and logging the duration in the current Timer instance.
+     */
+    def time[T](f: => T): T = {
+      val (rv, duration) = Stats.duration(f)
+      add(duration.asInstanceOf[Int]) // is safe as long as it didn't take longer then 46 days.
+      rv
+    }
+
+    /**
      * Returns a tuple of (Count, Min, Max, Average) for the measured event.
      * If `reset` is true, it clears the current event timings also.
      */
-    def getCountMinMaxAvg(reset: Boolean): (Long, Int, Int, Int) = synchronized {
+    def getCountMinMaxAvg(reset: Boolean): (Int, Int, Int, Int) = synchronized {
       if (count == 0) {
         (0, 0, 0, 0)
       } else {
@@ -163,12 +213,12 @@ object Stats {
   /**
    * Returns a function that increments the named counter by 1.
    */
-  def buildIncr(name: String): () => Long = { () => incr(1L, name) }
+  def buildIncr(name: String): () => Long = { () => incr(name, 1) }
 
   /**
    * Increments the named counter by <code>by</code>.
    */
-  def incr(by: Long, name: String): Long = {
+  def incr(name: String, by: Int): Long = {
     getCounter(name).value.addAndGet(by)
   }
 
@@ -176,7 +226,7 @@ object Stats {
    * Creates a Timing object of name and duration and stores
    * it in the keymap. Returns the total number of timings stored so far.
    */
-  def addTiming(duration: Int, name: String): Long = {
+  def addTiming(name: String, duration: Int): Long = {
     getTiming(name).add(duration)
   }
 
@@ -184,15 +234,24 @@ object Stats {
    * Times the duration of function f, and adds that duration to a named timing measurement.
    */
   def time[T](name: String)(f: => T): T = {
-    val (rv, duration) = time(f)
-    addTiming(duration.toInt, name)
+    val (rv, msec) = duration(f)
+    addTiming(name, msec.toInt)
+    rv
+  }
+
+  /**
+   * Times the duration of function f, and adds that duration to a named timing measurement.
+   */
+  def timeNanos[T](name: String)(f: => T): T = {
+    val (rv, nsec) = durationNanos(f)
+    addTiming(name, nsec.toInt)
     rv
   }
 
   /**
    * Returns how long it took, in milliseconds, to run the function f.
    */
-  def time[T](f: => T): (T, Long) = {
+  def duration[T](f: => T): (T, Long) = {
     val start = System.currentTimeMillis
     val rv = f
     val duration = System.currentTimeMillis - start
@@ -202,7 +261,7 @@ object Stats {
   /**
    * Returns how long it took, in nanoseconds, to run the function f.
    */
-  def timeNanos[T](f: => T): (T, Long) = {
+  def durationNanos[T](f: => T): (T, Long) = {
     val start = System.nanoTime
     val rv = f
     val duration = System.nanoTime - start
@@ -248,25 +307,20 @@ object Stats {
     immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
   }
 
+  case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int)
+
   /**
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
    * cleared, so the next call will return the stats about timings since now.
    */
-  def getTimingStats(reset: Boolean): Map[String, Long] = {
-    val out = new mutable.HashMap[String, Long]
+  def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
+    val out = new mutable.HashMap[String, TimingStat]
     for ((key, timing) <- timingMap) {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
-      out += (key + "_count" -> count.toLong)
-      if (count > 0) {
-        out += (key + "_min" -> minimum.toLong)
-        out += (key + "_max" -> maximum.toLong)
-        out += (key + "_avg" -> average.toLong)
-      }
+      out += (key -> TimingStat(count, minimum, maximum, average))
     }
     out
   }
-
-  def getTimingStats(): Map[String, Long] = getTimingStats(true)
 
   /**
    * Returns a Map[String, Double] of current gauge readings.

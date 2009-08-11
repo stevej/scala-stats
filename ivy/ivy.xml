@@ -1,9 +1,9 @@
 <ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
-  <info organisation="com.twitter"
-    module="commons"
+  <info organisation="com.twitter.service"
+    module="stats"
     revision="1.0"
-    e:testclass="com.twitter.commons.TestRunner"
-    e:buildpackage="com.twitter.commons"
+    e:testclass="com.twitter.service.TestRunner"
+    e:buildpackage="com.twitter.service"
   />
 
   <configurations>
@@ -12,14 +12,16 @@
     <conf name="test" visibility="private" description="build and run tests" />
   </configurations>
   <publications>
-    <artifact name="commons" type="jar" conf="*" />
+    <artifact name="stats" type="jar" conf="*" />
   </publications>
   <dependencies>
     <!-- want scala-compiler for running the console -->
-    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.3" />
-    <dependency org="org.scala-lang" name="scala-library" rev="2.7.3" />
-    <dependency org="org.scala-tools" name="vscaladoc" rev="1.1" conf="bootstrap->default" />
-    <dependency org="org.specs" name="specs" rev="1.3.1" />
-    <dependency org="net.lag" name="configgy" rev="1.2" />
+    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.5" />
+    <dependency org="org.scala-lang" name="scala-library" rev="2.7.5" />
+    <dependency org="org.scala-tools" name="vscaladoc" rev="1.1-md-3" conf="bootstrap->*"/>
+
+    <dependency org="org.scala-tools.testing" name="specs" rev="1.4.4" conf="test->*"/>
+    <dependency org="junit" name="junit" rev="4.4" conf="test->*"/>
+    <dependency org="net.lag" name="configgy" rev="1.3" />
   </dependencies>
 </ivy-module>
