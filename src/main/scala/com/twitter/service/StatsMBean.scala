@@ -21,15 +21,23 @@ import javax.{management => jmx}
 
 
 object StatsMBean {
-  def apply(packageName: String): Unit = apply(packageName, ManagementFactory.getPlatformMBeanServer())
+  def apply(packageName: String): Unit = apply(packageName, false)
 
-  def apply(packageName: String, mbeanServer: jmx.MBeanServer): Unit = {
-    mbeanServer.registerMBean(new StatsMBean(), new jmx.ObjectName(packageName + ":type=Stats"))
+  def apply(packageName: String, resetTimings: Boolean): Unit =
+    apply(packageName, resetTimings, false, false, ManagementFactory.getPlatformMBeanServer())
+
+  def apply(packageName: String, resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boolean,
+            mbeanServer: jmx.MBeanServer): Unit = {
+    val stats = new StatsMBean(resetTimings, resetGauges, resetCounters)
+    mbeanServer.registerMBean(stats, new jmx.ObjectName(packageName + ":type=Stats"))
   }
 }
 
 
-class StatsMBean extends jmx.DynamicMBean {
+class StatsMBean(resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boolean) extends jmx.DynamicMBean {
+
+  def this() = this(false, false, false)
+
   def getMBeanInfo() = {
     new jmx.MBeanInfo("com.twitter.service.Stats", "running statistics", getAttributeInfo(),
       null, null, null, new jmx.ImmutableDescriptor("immutableInfo=false"))
@@ -39,10 +47,10 @@ class StatsMBean extends jmx.DynamicMBean {
     val segments = name.split("_", 2)
     segments(0) match {
       case "counter" =>
-        Stats.getCounterStats()(segments(1)).asInstanceOf[java.lang.Long]
+        Stats.getCounterStats(resetCounters)(segments(1)).asInstanceOf[java.lang.Long]
       case "timing" =>
         val prefix = segments(1).split("_", 2)
-        val timing = Stats.getTimingStats(false)(prefix(1))
+        val timing = Stats.getTimingStats(resetTimings)(prefix(1))
         val x = prefix(0) match {
           case "min" => timing.minimum
           case "max" => timing.maximum
@@ -51,7 +59,7 @@ class StatsMBean extends jmx.DynamicMBean {
         }
         x.asInstanceOf[java.lang.Integer]
       case "gauge" =>
-        Stats.getGaugeStats(false)(segments(1)).asInstanceOf[java.lang.Double]
+        Stats.getGaugeStats(resetGauges)(segments(1)).asInstanceOf[java.lang.Double]
     }
   }
 

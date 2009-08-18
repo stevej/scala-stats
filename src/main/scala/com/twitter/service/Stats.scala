@@ -303,8 +303,16 @@ object Stats extends Stats {
   /**
    * Returns a Map[String, Long] of counters and their current values.
    */
-  def getCounterStats(): Map[String, Long] = {
-    immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
+  def getCounterStats(): Map[String, Long] = getCounterStats(false)
+
+  /**
+   * Returns a Map[String, Long] of counters and their current values.
+   * @param reset whether or not to reset the counters.
+   */
+  def getCounterStats(reset: Boolean): Map[String, Long] = {
+    val rv = immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
+    counterMap.clear()
+    rv
   }
 
   case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int)
