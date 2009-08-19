@@ -73,6 +73,8 @@ object Stats extends Stats {
     def incr() = value.addAndGet(1)
     def incr(n: Int) = value.addAndGet(n)
     def apply(): Long = value.get()
+    def update(n: Long) = value.set(n)
+    def reset = update(0L)
   }
 
 
@@ -311,7 +313,9 @@ object Stats extends Stats {
    */
   def getCounterStats(reset: Boolean): Map[String, Long] = {
     val rv = immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
-    counterMap.clear()
+    if (reset) {
+      counterMap.map(x => x._2.reset)
+    }
     rv
   }
 
