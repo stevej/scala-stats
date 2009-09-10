@@ -91,7 +91,7 @@ object Stats extends Stats {
     /**
      * Resets the state of this Timing. Clears the durations and counts collected sofar.
      */
-    def clear = synchronized {
+    def clear() = synchronized {
       maximum = Math.MIN_INT
       minimum = Math.MAX_INT
       sum = 0
@@ -132,12 +132,11 @@ object Stats extends Stats {
       } else {
         val average = (sum / count).toInt
         val rv = (count, minimum, maximum, average)
-        if (reset) clear
+        if (reset) clear()
         rv
       }
     }
   }
-
 
   /**
    * A gauge has an instantaneous value (like memory usage) and is polled whenever stats
@@ -145,16 +144,17 @@ object Stats extends Stats {
    */
   trait Gauge extends ((Boolean) => Double) with Measurement
 
-
   // Maintains a Map of the variables we are tracking and their value.
   private val counterMap = new mutable.HashMap[String, Counter]()
   private val timingMap = new mutable.HashMap[String, Timing]()
+  private val timingStatsMap = new mutable.HashMap[String, TimingStat]()
   private val gaugeMap = new mutable.HashMap[String, Gauge]()
 
   def clearAll() = {
-    counterMap.synchronized { counterMap.clear }
-    timingMap.synchronized { timingMap.clear }
-    gaugeMap.synchronized { gaugeMap.clear }
+    counterMap.synchronized { counterMap.clear() }
+    timingMap.synchronized { timingMap.clear() }
+    timingStatsMap.synchronized { timingStatsMap.clear() }
+    gaugeMap.synchronized { gaugeMap.clear() }
   }
 
   /**
@@ -186,7 +186,7 @@ object Stats extends Stats {
   /**
    * Create a gauge with the given name.
    */
-  def makeGauge(name: String)(gauge: => Double): Unit = timingMap.synchronized {
+  def makeGauge(name: String)(gauge: => Double): Unit = gaugeMap.synchronized {
     gaugeMap += (name -> new Gauge { def apply(reset: Boolean) = gauge })
   }
 
@@ -207,7 +207,7 @@ object Stats extends Stats {
         if (deltaDenom == 0) 0.0 else deltaNom * 1.0 / deltaDenom
       }
     }
-    timingMap.synchronized {
+    gaugeMap.synchronized {
       gaugeMap += (name -> g)
     }
   }
@@ -230,6 +230,14 @@ object Stats extends Stats {
    */
   def addTiming(name: String, duration: Int): Long = {
     getTiming(name).add(duration)
+  }
+
+
+  /**
+   * Adds an immutable TimingStat instance with a given name.
+   */
+  def addTimingStat(name: String, stat: TimingStat) {
+    timingStatsMap += (name -> stat)
   }
 
   /**
@@ -319,6 +327,10 @@ object Stats extends Stats {
     rv
   }
 
+  /**
+   * A pre-calculated timing. E.g. if you have timing stats from an external source but
+   * still want to report them via the Stats interface, then use a TimingStat.
+   */
   case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int)
 
   /**
@@ -331,7 +343,9 @@ object Stats extends Stats {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
       out += (key -> TimingStat(count, minimum, maximum, average))
     }
-    out
+    val rv = out ++ timingStatsMap
+    if (reset) timingStatsMap.clear()
+    rv
   }
 
   /**
