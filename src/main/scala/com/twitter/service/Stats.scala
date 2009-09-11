@@ -150,11 +150,25 @@ object Stats extends Stats {
   private val timingStatsMap = new mutable.HashMap[String, TimingStat]()
   private val gaugeMap = new mutable.HashMap[String, Gauge]()
 
+  // Maintains a list of callback functions for fetching TimingStat objects.
+  private var timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
+
+  /**
+   * Removes all tracked timings, timingstats, gauges, and counters.
+   */
   def clearAll() = {
     counterMap.synchronized { counterMap.clear() }
     timingMap.synchronized { timingMap.clear() }
     timingStatsMap.synchronized { timingStatsMap.clear() }
     gaugeMap.synchronized { gaugeMap.clear() }
+    timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
+  }
+
+  /**
+   * Removes all timingStats callback functions.
+   */
+  def clearTimingStatsFn() {
+    timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
   }
 
   /**
@@ -222,6 +236,14 @@ object Stats extends Stats {
    */
   def incr(name: String, by: Int): Long = {
     getCounter(name).value.addAndGet(by)
+  }
+
+  /**
+   * Register a function to be called when you want to collect timing stats.
+   * The Boolean parameter is whether the state should be 'reset'
+   */
+  def registerTimingStatsFn(fn: (Boolean) => Map[String, TimingStat]) {
+    timingStatsFnList += fn
   }
 
   /**
@@ -343,7 +365,9 @@ object Stats extends Stats {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
       out += (key -> TimingStat(count, minimum, maximum, average))
     }
-    val rv = out ++ timingStatsMap
+
+    val stats = timingStatsFnList.flatMap(_(reset).toList)
+    val rv = out ++ timingStatsMap ++ stats
     if (reset) timingStatsMap.clear()
     rv
   }

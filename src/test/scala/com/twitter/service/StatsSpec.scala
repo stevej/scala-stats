@@ -103,6 +103,33 @@ object StatsSpec extends Specification {
         Stats.addTimingStat("foobar", TimingStat(3, 0, 0, 0))
         Stats.getTimingStats(false)("foobar").count mustEqual 3
       }
+
+      "timing stats callbacks are called" in {
+        var i = 0
+        var j = 0
+        var resetCalled = 0
+
+        Stats.registerTimingStatsFn { reset =>
+          i += 1
+          j += 1
+          resetCalled += 1
+          Map(("hello" -> TimingStat(0, 1, 2, 3)))
+        }
+
+        Stats.registerTimingStatsFn { reset =>
+          j += 1
+          resetCalled += 1
+          Map(("goodbye" -> TimingStat(4, 5, 6, 7)))
+        }
+
+        val stats = Stats.getTimingStats(false)
+        stats.size mustEqual 2
+        stats("hello") mustEqual TimingStat(0, 1, 2, 3)
+        stats("goodbye") mustEqual TimingStat(4, 5, 6, 7)
+        i mustEqual 1
+        j mustEqual 2
+        resetCalled mustEqual 2
+      }
     }
 
     "gauges" in {
