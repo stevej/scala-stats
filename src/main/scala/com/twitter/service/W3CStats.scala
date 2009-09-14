@@ -31,14 +31,15 @@ import java.text.SimpleDateFormat
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
 class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
-  //val fields = Array("backend-response-time", "backend-response-method", "request-uri")
   val log = Logger.get
 
   /**
    * Store our map of named events.
    */
   private val tl = new ThreadLocal[mutable.Map[String, Any]]() {
-    override def initialValue(): mutable.Map[String, Any] = new mutable.HashMap[String, Any]
+    override def initialValue(): mutable.Map[String, Any] = new mutable.HashMap[String, Any] {
+      override def initialSize = fields.length * 2
+    }
   }
 
   /**
