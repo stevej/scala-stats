@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.twitter.service
+package com.twitter.stats
 
 import net.lag.logging.Logger
 import scala.collection.mutable

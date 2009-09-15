@@ -1,9 +1,9 @@
 <ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
-  <info organisation="com.twitter.service"
+  <info organisation="com.twitter"
     module="stats"
-    revision="1.1"
-    e:testclass="com.twitter.service.TestRunner"
-    e:buildpackage="com.twitter.service"
+    revision="1.2"
+    e:testclass="com.twitter.stats.TestRunner"
+    e:buildpackage="com.twitter.stats"
   />
 
   <configurations>
@@ -12,12 +12,13 @@
     <conf name="test" visibility="private" description="build and run tests" />
   </configurations>
   <publications>
-    <artifact name="stats" type="jar" conf="*" />
+    <artifact />
+    <artifact type="pom" />
   </publications>
   <dependencies>
     <!-- want scala-compiler for running the console -->
-    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.3" />
-    <dependency org="org.scala-lang" name="scala-library" rev="2.7.3" />
+    <dependency org="org.scala-lang" name="scala-compiler" rev="2.7.5" />
+    <dependency org="org.scala-lang" name="scala-library" rev="2.7.5" />
     <dependency org="org.scala-tools" name="vscaladoc" rev="1.1-md-3" conf="bootstrap->*"/>
 
     <dependency org="org.scala-tools.testing" name="specs" rev="1.4.4" conf="test->*"/>

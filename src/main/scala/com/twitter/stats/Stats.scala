@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.twitter.service
+package com.twitter.stats
 
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
@@ -49,6 +49,13 @@ trait Stats {
    * Increments a count in the stats.
    */
   def incr(name: String): Long = incr(name, 1)
+}
+
+
+object DevNullStats extends Stats {
+  def time[T](name: String)(f: => T): T = f
+  def timeNanos[T](name: String)(f: => T): T = f
+  def incr(name: String, count: Int): Long = count.toLong
 }
 
 
