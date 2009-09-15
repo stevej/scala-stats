@@ -16,6 +16,7 @@
 
 package com.twitter.service
 
+import net.lag.logging.Logger
 import java.lang.management.ManagementFactory
 import javax.{management => jmx}
 
@@ -35,6 +36,9 @@ object StatsMBean {
 
 
 class StatsMBean(resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boolean) extends jmx.DynamicMBean {
+  private val log = Logger.get
+  log.debug("StatsMBean instantiated with resetTimings: %s, resetGauges: %s, resetCounters: %s",
+            resetTimings, resetGauges, resetCounters)
 
   def this() = this(false, false, false)
 
