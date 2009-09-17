@@ -23,6 +23,6 @@
 
     <dependency org="org.scala-tools.testing" name="specs" rev="1.4.4" conf="test->*"/>
     <dependency org="junit" name="junit" rev="4.4" conf="test->*"/>
-    <dependency org="net.lag" name="configgy" rev="1.3" />
+    <dependency org="net.lag" name="configgy" rev="1.4" />
   </dependencies>
 </ivy-module>
