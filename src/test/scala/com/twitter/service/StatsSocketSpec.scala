@@ -26,7 +26,7 @@ object StatsSocketSpec extends Specification {
       if (listener != null) { listener.stop }
       if (server != null) { server.stop }
 
-      listener = new StatsSocketListener(43210, fn)
+      listener = new StatsSocketListener(43210, 10000, fn)
       server = new Thread(listener)
       server.start
 
@@ -39,7 +39,7 @@ object StatsSocketSpec extends Specification {
       in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream))
     }
 
-    "return text content correctly with multiple requests" >> {
+    "return text content correctly and close" >> {
       out.println("stats text")
       out.flush()
       in.readLine() mustEqual "foo: 1"
@@ -47,10 +47,10 @@ object StatsSocketSpec extends Specification {
       out.println("stats text")
       out.flush()
       in.readLine() mustEqual ""
-      in.readLine() mustEqual "foo: 1"
+      in.readLine() must throwA[SocketException]
     }
 
-    "return json content correctly with multiple requests" >> {
+    "return json content correctly and close" >> {
       out.println("stats json")
       out.flush()
       in.readLine() mustEqual "{\"foo\": 1}"
@@ -58,7 +58,7 @@ object StatsSocketSpec extends Specification {
       out.println("stats json")
       out.flush()
       in.readLine() mustEqual ""
-      in.readLine() mustEqual "{\"foo\": 1}"
+      in.readLine() must throwA[SocketException]
     }
   }
 }

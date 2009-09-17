@@ -17,12 +17,13 @@ package com.twitter.service
 
 import net.lag.logging.Logger
 import java.net.{ServerSocket, Socket}
-import java.io.{BufferedReader, InputStreamReader, IOException, PrintWriter, Writer}
+import java.io.{BufferedReader, InputStream, InputStreamReader, IOException, PrintWriter, Writer}
 import java.util.concurrent.Executors
 
 /**
  * Takes a Socket bound to a client and a function taking an input string and
- * returning a string to be written to the client socket.
+ * returning a string to be written to the client socket. NB. It only reads
+ * the first line and then closes the connection after writing the output.
  *
  * @param socket Socket bound to the client
  * @param fn Function for processing the first line coming from the client socket and returning
@@ -42,18 +43,14 @@ class StatsSocketWorker(socket: Socket, timeout: Int, fn: (String) => String) ex
     log.ifDebug { "Client has connected to StatsSocketWorker from Address: %s:%s".format(socket.getInetAddress, socket.getPort) }
     var out: PrintWriter = null
     var in: BufferedReader = null
-
     try {
       out = new PrintWriter(socket.getOutputStream(), true)
-      in = new BufferedReader(new InputStreamReader(socket.getInputStream()))
-      var line = ""
-      while (socket.isConnected) {
-        log.ifDebug { "Reading in command from remote socket from Address: %s:%s".format(socket.getInetAddress, socket.getPort) }
-        line = in.readLine()
-        log.ifDebug { "Writing out response from StatsSocketWorker on Address: %s:%s".format(socket.getInetAddress, socket.getPort) }
-        out.println(fn(line))
-        out.flush()
-      }
+      in = new BufferedReader(new InputStreamReader(socket.getInputStream))
+      val line = in.readLine()
+      log.ifDebug { "Reading in command from remote socket from Address: %s:%s".format(socket.getInetAddress, socket.getPort) }
+      log.ifDebug { "Writing out response from StatsSocketWorker on Address: %s:%s".format(socket.getInetAddress, socket.getPort) }
+      out.print(fn(line) + "\n")
+      out.flush()
     } catch {
       case e: IOException => log.error(e, "Error writing to client")
     } finally {
