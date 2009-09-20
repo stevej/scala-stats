@@ -16,20 +16,32 @@
 
 package com.twitter.service
 
+import net.lag.logging.Logger
 import java.lang.management.ManagementFactory
 import javax.{management => jmx}
 
 
 object StatsMBean {
-  def apply(packageName: String): Unit = apply(packageName, ManagementFactory.getPlatformMBeanServer())
+  def apply(packageName: String): Unit = apply(packageName, false)
 
-  def apply(packageName: String, mbeanServer: jmx.MBeanServer): Unit = {
-    mbeanServer.registerMBean(new StatsMBean(), new jmx.ObjectName(packageName + ":type=Stats"))
+  def apply(packageName: String, resetTimings: Boolean): Unit =
+    apply(packageName, resetTimings, false, false, ManagementFactory.getPlatformMBeanServer())
+
+  def apply(packageName: String, resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boolean,
+            mbeanServer: jmx.MBeanServer): Unit = {
+    val stats = new StatsMBean(resetTimings, resetGauges, resetCounters)
+    mbeanServer.registerMBean(stats, new jmx.ObjectName(packageName + ":type=Stats"))
   }
 }
 
 
-class StatsMBean extends jmx.DynamicMBean {
+class StatsMBean(resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boolean) extends jmx.DynamicMBean {
+  private val log = Logger.get
+  log.debug("StatsMBean instantiated with resetTimings: %s, resetGauges: %s, resetCounters: %s",
+            resetTimings, resetGauges, resetCounters)
+
+  def this() = this(false, false, false)
+
   def getMBeanInfo() = {
     new jmx.MBeanInfo("com.twitter.service.Stats", "running statistics", getAttributeInfo(),
       null, null, null, new jmx.ImmutableDescriptor("immutableInfo=false"))
@@ -39,19 +51,12 @@ class StatsMBean extends jmx.DynamicMBean {
     val segments = name.split("_", 2)
     segments(0) match {
       case "counter" =>
-        Stats.getCounterStats()(segments(1)).asInstanceOf[java.lang.Long]
+        Stats.getCounterStats(resetCounters)(segments(1)).asInstanceOf[java.lang.Long]
       case "timing" =>
         val prefix = segments(1).split("_", 2)
-        val timing = Stats.getTimingStats(false)(prefix(1))
-        val x = prefix(0) match {
-          case "min" => timing.minimum
-          case "max" => timing.maximum
-          case "count" => timing.count
-          case "average" => timing.average
-        }
-        x.asInstanceOf[java.lang.Integer]
+        val timing = Stats.getTimingStats(resetTimings)(prefix(1))
       case "gauge" =>
-        Stats.getGaugeStats(false)(segments(1)).asInstanceOf[java.lang.Double]
+        Stats.getGaugeStats(resetGauges)(segments(1)).asInstanceOf[java.lang.Double]
     }
   }
 
@@ -71,9 +76,7 @@ class StatsMBean extends jmx.DynamicMBean {
     (Stats.getCounterStats().keys.map { name =>
       List(new jmx.MBeanAttributeInfo("counter_" + name, "java.lang.Long", "counter", true, false, false))
     } ++ Stats.getTimingStats(false).keys.map { name =>
-      List("min", "max", "average", "count") map { prefix =>
-        new jmx.MBeanAttributeInfo("timing_" + prefix + "_" + name, "java.lang.Integer", "timing", true, false, false)
-      }
+        List(new jmx.MBeanAttributeInfo("timing_" + name, "java.lang.Integer", "timing", true, false, false))
     } ++ Stats.getGaugeStats(false).keys.map { name =>
       List(new jmx.MBeanAttributeInfo("gauge_" + name, "java.lang.Long", "gauge", true, false, false))
     }).toList.flatten[jmx.MBeanAttributeInfo].toArray
