@@ -1,6 +1,7 @@
 /** Copyright 2009 Twitter, Inc. */
 package com.twitter.service
 
+import com.twitter.json
 import net.lag.extensions._
 import org.specs._
 import scala.collection.immutable
@@ -11,7 +12,11 @@ import java.io.{BufferedReader, InputStreamReader, PrintWriter}
 object StatsSocketSpec extends Specification {
   def fn(cmd: String): String = cmd match {
     case "stats text" => "foo: 1\n"
-    case "stats json" => "{\"foo\": 1}\n"
+    case "stats json" => try {
+      Json.build(Map("foo" -> 1)).toString
+    } catch {
+      case e => e.printStackTrace; "wrong!"
+    }
     case cmd => "error unknown command: " + cmd + "\n"
   }
 
@@ -53,11 +58,10 @@ object StatsSocketSpec extends Specification {
     "return json content correctly and close" >> {
       out.println("stats json")
       out.flush()
-      in.readLine() mustEqual "{\"foo\": 1}"
+      in.readLine() mustEqual "{\"foo\":1}"
 
       out.println("stats json")
       out.flush()
-      in.readLine() mustEqual ""
       in.readLine() must throwA[SocketException]
     }
   }

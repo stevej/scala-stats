@@ -16,6 +16,7 @@
 
 package com.twitter.service
 
+import com.twitter.json
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
 import java.util.logging.Logger
@@ -410,4 +411,7 @@ object Stats extends Stats {
   }
 
   def stats(): String = stats(true)
+
+  def jsonStats(reset: Boolean): String = Json.build(stats(reset)).toString
+  def jsonStats(): String = jsonStats(true)
 }
