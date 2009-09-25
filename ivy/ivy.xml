@@ -1,7 +1,7 @@
 <ivy-module version="1.0" xmlns:e="http://ant.apache.org/ivy/extra">
   <info organisation="com.twitter"
     module="stats"
-    revision="1.2"
+    revision="1.3"
     e:testclass="com.twitter.stats.TestRunner"
     e:buildpackage="com.twitter.stats"
   />
