@@ -1,5 +1,5 @@
 /*
- * Copyright 2009 Twitter, Inc.
+* Copyright 2009 Twitter, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.twitter.stats
+package com.twitter.service
 
+import net.lag.logging.Logger
 import java.lang.management.ManagementFactory
 import javax.{management => jmx}
-import net.lag.logging.Logger
 
 
 object StatsMBean {
@@ -55,13 +55,6 @@ class StatsMBean(resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boo
       case "timing" =>
         val prefix = segments(1).split("_", 2)
         val timing = Stats.getTimingStats(resetTimings)(prefix(1))
-        val x = prefix(0) match {
-          case "min" => timing.minimum
-          case "max" => timing.maximum
-          case "count" => timing.count
-          case "average" => timing.average
-        }
-        x.asInstanceOf[java.lang.Integer]
       case "gauge" =>
         Stats.getGaugeStats(resetGauges)(segments(1)).asInstanceOf[java.lang.Double]
     }
@@ -83,9 +76,7 @@ class StatsMBean(resetTimings: Boolean, resetGauges: Boolean, resetCounters: Boo
     (Stats.getCounterStats().keys.map { name =>
       List(new jmx.MBeanAttributeInfo("counter_" + name, "java.lang.Long", "counter", true, false, false))
     } ++ Stats.getTimingStats(false).keys.map { name =>
-      List("min", "max", "average", "count") map { prefix =>
-        new jmx.MBeanAttributeInfo("timing_" + prefix + "_" + name, "java.lang.Integer", "timing", true, false, false)
-      }
+        List(new jmx.MBeanAttributeInfo("timing_" + name, "java.lang.Integer", "timing", true, false, false))
     } ++ Stats.getGaugeStats(false).keys.map { name =>
       List(new jmx.MBeanAttributeInfo("gauge_" + name, "java.lang.Long", "gauge", true, false, false))
     }).toList.flatten[jmx.MBeanAttributeInfo].toArray

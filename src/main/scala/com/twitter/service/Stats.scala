@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package com.twitter.stats
+package com.twitter.service
 
+import com.twitter.json
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
 import java.util.logging.Logger
-import scala.collection.{Map, mutable, immutable}
-import com.twitter.json
+import scala.collection.Map
+import scala.collection.immutable
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ListBuffer
 
 
 trait Stats {
@@ -46,13 +50,6 @@ trait Stats {
    * Increments a count in the stats.
    */
   def incr(name: String): Long = incr(name, 1)
-}
-
-
-object DevNullStats extends Stats {
-  def time[T](name: String)(f: => T): T = f
-  def timeNanos[T](name: String)(f: => T): T = f
-  def incr(name: String, count: Int): Long = count.toLong
 }
 
 
@@ -142,13 +139,11 @@ object Stats extends Stats {
     }
   }
 
-
   /**
    * A gauge has an instantaneous value (like memory usage) and is polled whenever stats
    * are collected.
    */
   trait Gauge extends ((Boolean) => Double) with Measurement
-
 
   // Maintains a Map of the variables we are tracking and their value.
   private val counterMap = new mutable.HashMap[String, Counter]()
@@ -159,19 +154,22 @@ object Stats extends Stats {
   // Maintains a list of callback functions for fetching TimingStat objects.
   private var timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
 
+  /**
+   * Removes all tracked timings, timingstats, gauges, and counters.
+   */
   def clearAll() = {
     counterMap.synchronized { counterMap.clear() }
     timingMap.synchronized { timingMap.clear() }
     timingStatsMap.synchronized { timingStatsMap.clear() }
     gaugeMap.synchronized { gaugeMap.clear() }
-    clearTimingStatsFn()
+    timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
   }
 
   /**
    * Removes all timingStats callback functions.
    */
   def clearTimingStatsFn() {
-    timingStatsFnList.synchronized { timingStatsFnList.clear() }
+    timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
   }
 
   /**
@@ -224,7 +222,7 @@ object Stats extends Stats {
         if (deltaDenom == 0) 0.0 else deltaNom * 1.0 / deltaDenom
       }
     }
-    timingMap.synchronized {
+    gaugeMap.synchronized {
       gaugeMap += (name -> g)
     }
   }
@@ -245,7 +243,7 @@ object Stats extends Stats {
    * Register a function to be called when you want to collect timing stats.
    * The Boolean parameter is whether the state should be 'reset'
    */
-  def registerTimingStatsFn(fn: (Boolean) => Map[String, TimingStat]) = timingStatsFnList.synchronized {
+  def registerTimingStatsFn(fn: (Boolean) => Map[String, TimingStat]) {
     timingStatsFnList += fn
   }
 
@@ -257,10 +255,11 @@ object Stats extends Stats {
     getTiming(name).add(duration)
   }
 
+
   /**
    * Adds an immutable TimingStat instance with a given name.
    */
-  def addTimingStat(name: String, stat: TimingStat) = timingStatsMap.synchronized {
+  def addTimingStat(name: String, stat: TimingStat) {
     timingStatsMap += (name -> stat)
   }
 
@@ -344,11 +343,9 @@ object Stats extends Stats {
    * @param reset whether or not to reset the counters.
    */
   def getCounterStats(reset: Boolean): Map[String, Long] = {
-    val rv = immutable.HashMap(counterMap.map(case (k, v) => (k, v.value.get)).toList: _*)
+    val rv = immutable.HashMap(counterMap.map(x => (x._1, x._2.value.get)).toList: _*)
     if (reset) {
-      for ((k, v) <- counterMap) {
-        v.reset()
-      }
+      counterMap.map(x => x._2.reset)
     }
     rv
   }
@@ -363,19 +360,25 @@ object Stats extends Stats {
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
    * cleared, so the next call will return the stats about timings since now.
    */
-  def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
-    val out = new mutable.HashMap[String, TimingStat]
-
+  def getTimingStats(reset: Boolean): Map[String, Int] = {
+    val out = new mutable.HashMap[String, Int]
     for ((key, timing) <- timingMap) {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
-      out += (key -> TimingStat(count, minimum, maximum, average))
+      out += (key + "_count" -> count)
+      out += (key + "_min" -> minimum)
+      out += (key + "_max" -> maximum)
+      out += (key + "_avg" -> average)
     }
 
     val stats = timingStatsFnList.flatMap(_(reset).toList)
     for ((key, timing) <- stats ++ timingStatsMap) {
-      out += (key + TimingStat(timing.count, timing.minimum, timing.maximum, timing.average))
+      out += (key + "_count" -> timing.count)
+      out += (key + "_min" -> timing.minimum)
+      out += (key + "_max" -> timing.maximum)
+      out += (key + "_avg" -> timing.average)
     }
 
+    if (reset) timingStatsMap.clear()
     out
   }
 
