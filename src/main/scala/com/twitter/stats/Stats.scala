@@ -20,7 +20,7 @@ import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
 import java.util.logging.Logger
 import scala.collection.{Map, mutable, immutable}
-import com.twitter.json
+import com.twitter.json.Json
 
 
 trait Stats {
@@ -78,7 +78,7 @@ object Stats extends Stats {
     def incr(n: Int) = value.addAndGet(n)
     def apply(): Long = value.get()
     def update(n: Long) = value.set(n)
-    def reset = update(0L)
+    def reset() = update(0L)
   }
 
 
@@ -344,7 +344,7 @@ object Stats extends Stats {
    * @param reset whether or not to reset the counters.
    */
   def getCounterStats(reset: Boolean): Map[String, Long] = {
-    val rv = immutable.HashMap(counterMap.map(case (k, v) => (k, v.value.get)).toList: _*)
+    val rv = immutable.HashMap(counterMap.map { case (k, v) => (k, v.value.get) }.toList: _*)
     if (reset) {
       for ((k, v) <- counterMap) {
         v.reset()
@@ -391,7 +391,7 @@ object Stats extends Stats {
    * name: value
    */
   def stats(reset: Boolean): String = {
-    val out = new ListBuffer[String]()
+    val out = new mutable.ListBuffer[String]()
     for ((key, value) <- getJvmStats()) {
       out += (key + ": " + value.toString)
     }
