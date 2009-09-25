@@ -20,7 +20,7 @@ import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
 import java.util.logging.Logger
 import scala.collection.{Map, mutable, immutable}
-import com.twitter.json.Json
+import com.twitter.json.{Json, JsonSerializable}
 
 
 trait Stats {
@@ -357,7 +357,11 @@ object Stats extends Stats {
    * A pre-calculated timing. E.g. if you have timing stats from an external source but
    * still want to report them via the Stats interface, then use a TimingStat.
    */
-  case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int)
+  case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int) extends JsonSerializable {
+    def toJson() = {
+      Json.build(immutable.Map("count" -> count, "minimum" -> minimum, "maximum" -> maximum, "average" -> average)).toString()
+    }
+  }
 
   /**
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
