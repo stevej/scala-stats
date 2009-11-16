@@ -20,6 +20,7 @@ import java.net.InetAddress
 import java.text.SimpleDateFormat
 import java.util.{Date, TimeZone}
 import java.util.zip.CRC32
+import scala.collection.Map
 import scala.collection.mutable
 import scala.util.Sorting._
 import com.twitter.xrayspecs.Time
@@ -56,7 +57,11 @@ class W3CReporter(val logger: Logger) {
     if (crc != previousCrc || Time.now >= nextHeaderDumpAt) {
       logHeader(fieldsHeader, crc)
     }
-    logger.info(orderedKeys.map { key => stringify(stats(key)) }.mkString(" "))
+    logger.info(generateLine(orderedKeys, stats))
+  }
+
+  def generateLine(orderedKeys: Iterable[String], stats: Map[String, Any]) = {
+    orderedKeys.map { key => stats.get(key).map { stringify(_) }.getOrElse("-") }.mkString(" ")
   }
 
   private def logHeader(fieldsHeader: String, crc: Long) {
