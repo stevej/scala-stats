@@ -67,29 +67,7 @@ object W3CStatsSpec extends Specification {
       entries(2) mustEqual "/home"
       entries(3).toInt must be_>=(10)  //must take at least 10 ns!
       entries(4) mustEqual "-"
-      entries(5) mustEqual "31-Dec-1969_16:00:00"
-    }
-
-    "date_header uses the w3c format" in {
-      val header = w3c.date_header(new Date(0))
-      header mustEqual "#Date: 31-Dec-1969 16:00:00"
-    }
-
-    "crc_header is stable" in {
-      w3c.crc32_header(w3c.fields_header()) mustEqual "#CRC: 1616924806"
-    }
-
-    "fields_header is stable" in {
-      val header = "#Fields: backend-response-time backend-response-method request-uri " +
-      "backend-response-time_ns unsupplied-field finish_timestamp widgets wodgets"
-      w3c.fields_header() mustEqual header
-    }
-
-    "log_header is present and has Version, Fields, and CRC" in {
-      val log_header = w3c.log_header
-      log_header must include("#Version")
-      log_header must include("#CRC")
-      log_header must include("#Fields")
+      entries(5) mustEqual "01-Jan-1970_00:00:00"
     }
 
     "map when cleared returns the empty string" in {
@@ -98,12 +76,6 @@ object W3CStatsSpec extends Specification {
       val logline = w3c.log_entry
       // strip out all unfound entries, and remove all whitespace. after that, it should be empty.
       logline.replaceAll("-", "").trim() mustEqual ""
-    }
-
-    "datetime_format returns a tuple of Date and Time" in {
-      val (date, time) = w3c.datetime_format(new Date(0))
-      date mustEqual "31-Dec-1969"
-      time mustEqual "16:00:00"
     }
 
     "logging a field not tracked in the fields member shouldn't show up in the logfile" in {
