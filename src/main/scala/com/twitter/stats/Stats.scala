@@ -81,6 +81,34 @@ object Stats extends Stats {
     def reset() = update(0L)
   }
 
+  /**
+   * A pre-calculated timing. E.g. if you have timing stats from an external source but
+   * still want to report them via the Stats interface, then use a TimingStat.
+   */
+  class TimingStat(_count: Int, _maximum: Int, _minimum: Int, _sum: Long, _sumSquares: Long) {
+    def count = _count
+    def minimum = if (_count > 0) _minimum else 0
+    def maximum = if (_count > 0) _maximum else 0
+    def average = if (_count > 0) (_sum / _count).toInt else 0
+    def variance = if (_count > 1) ((_sumSquares - _sum * average) / (_count - 1)).toInt else 0
+    def standardDeviation = Math.sqrt(variance)
+    def sum = _sum
+    def sumSquares = _sumSquares
+
+    def toJson() = {
+      Json.build(immutable.Map("count" -> count, "minimum" -> minimum, "maximum" -> maximum,
+        "average" -> average, "standard_deviation" -> standardDeviation, "sum" -> sum,
+        "sum_squares" -> sumSquares)).toString()
+    }
+
+    override def equals(other: Any) = other match {
+      case t: TimingStat =>
+        t.count == count && t.maximum == maximum && t.minimum == minimum && t.sum == sum && t.sumSquares == sumSquares
+      case _ => false
+    }
+
+    override def toString = "TimingStat(count=%d, maximum=%d, minimum=%d, sum=%d, sum_squares=%d)".format(count, maximum, minimum, sum, sumSquares)
+  }
 
   /**
    * A Timing collates durations of an event and can report
@@ -90,7 +118,9 @@ object Stats extends Stats {
     private var maximum = Math.MIN_INT
     private var minimum = Math.MAX_INT
     private var sum: Long = 0
+    private var sumSquares: Long = 0
     private var count: Int = 0
+
 
     /**
      * Resets the state of this Timing. Clears the durations and counts collected sofar.
@@ -99,6 +129,7 @@ object Stats extends Stats {
       maximum = Math.MIN_INT
       minimum = Math.MAX_INT
       sum = 0
+      sumSquares = 0
       count = 0
     }
 
@@ -110,6 +141,7 @@ object Stats extends Stats {
         maximum = n max maximum
         minimum = n min minimum
         sum += n
+        sumSquares += (n.toLong * n)
         count += 1
       } else {
         log.warning("Tried to add a negative timing duration. Was the clock adjusted?")
@@ -130,15 +162,10 @@ object Stats extends Stats {
      * Returns a tuple of (Count, Min, Max, Average) for the measured event.
      * If `reset` is true, it clears the current event timings also.
      */
-    def getCountMinMaxAvg(reset: Boolean): (Int, Int, Int, Int) = synchronized {
-      if (count == 0) {
-        (0, 0, 0, 0)
-      } else {
-        val average = (sum / count).toInt
-        val rv = (count, minimum, maximum, average)
-        if (reset) clear()
-        rv
-      }
+    def get(reset: Boolean): TimingStat = synchronized {
+      val rv = new TimingStat(count, maximum, minimum, sum, sumSquares)
+      if (reset) clear()
+      rv
     }
   }
 
@@ -354,16 +381,6 @@ object Stats extends Stats {
   }
 
   /**
-   * A pre-calculated timing. E.g. if you have timing stats from an external source but
-   * still want to report them via the Stats interface, then use a TimingStat.
-   */
-  case class TimingStat(count: Int, minimum: Int, maximum: Int, average: Int) extends JsonSerializable {
-    def toJson() = {
-      Json.build(immutable.Map("count" -> count, "minimum" -> minimum, "maximum" -> maximum, "average" -> average)).toString()
-    }
-  }
-
-  /**
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
    * cleared, so the next call will return the stats about timings since now.
    */
@@ -371,13 +388,12 @@ object Stats extends Stats {
     val out = new mutable.HashMap[String, TimingStat]
 
     for ((key, timing) <- timingMap) {
-      val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
-      out += (key -> TimingStat(count, minimum, maximum, average))
+      out += (key -> timing.get(reset))
     }
 
     val stats = timingStatsFnList.flatMap(_(reset).toList)
     for ((key, timing) <- stats ++ timingStatsMap) {
-      out += (key + TimingStat(timing.count, timing.minimum, timing.maximum, timing.average))
+      out += (key + new TimingStat(timing.count, timing.minimum, timing.maximum, timing.sum, timing.sumSquares))
     }
 
     out
