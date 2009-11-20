@@ -29,6 +29,9 @@ import net.lag.logging.Logger
 
 
 /**
+ * Log "w3c-style" lines to a java logger, using a map of key/value pairs. On each call to
+ * `report`, if the keys in the map have changed, or it's been "a while" since the header was
+ * last logged, the header is logged again.
  */
 class W3CReporter(val logger: Logger) {
   val log = Logger.get(getClass.getName)
@@ -37,7 +40,7 @@ class W3CReporter(val logger: Logger) {
    * The W3C header lines will be written out this often, even if the fields haven't changed.
    * (This lets log parsers resynchronize after a failure.)
    */
-  var headerRepeatFrequencyInMilliseconds = 60 * 1000
+  var headerRepeatFrequencyInMilliseconds = 5 * 60 * 1000
 
   var nextHeaderDumpAt = Time.now
 
