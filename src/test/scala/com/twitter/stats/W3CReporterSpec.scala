@@ -37,7 +37,7 @@ object W3CReporterSpec extends Specification {
     logger.setUseParentHandlers(false)
 
     var reporter: W3CReporter = null
-    
+
     def expectedHeader(crc: Long) = "w3c: #Version: 1.0" :: "w3c: #Date: 03-Aug-2009 19:23:04" :: ("w3c: #CRC: " + crc) :: Nil
 
     doBefore {
@@ -56,7 +56,7 @@ object W3CReporterSpec extends Specification {
       reporter.report(Map("date" -> new Date(0), "size" -> (1L << 32), "address" -> InetAddress.getByName("127.0.0.1"), "x" -> new Object))
       handler.toString.split("\n").last mustEqual "w3c: 127.0.0.1 01-Jan-1970_00:00:00 4294967296 -"
     }
-    
+
     "not repeat the header too often" in {
       reporter.report(Map("a" -> 1))
       reporter.report(Map("a" -> 2))
@@ -71,7 +71,7 @@ object W3CReporterSpec extends Specification {
         "w3c: #Fields: a" ::
         "w3c: 3" :: Nil
     }
-    
+
     "repeat the header when the fields change" in {
       reporter.report(Map("a" -> 1))
       reporter.report(Map("a" -> 2))
