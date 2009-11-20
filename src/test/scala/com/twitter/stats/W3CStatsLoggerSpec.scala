@@ -51,13 +51,25 @@ object W3CStatsLoggerSpec extends Specification {
       statsLogger.logStats()
       getLines() mustEqual "#Fields: cats dogs" :: "1 3" :: Nil
     }
-    
+
     "log timings" in {
       Time.freeze
       Stats.time("zzz") { Time.now += 10.milliseconds }
       Stats.time("zzz") { Time.now += 20.milliseconds }
       statsLogger.logStats()
       getLines() mustEqual "#Fields: zzz_avg zzz_count zzz_max zzz_min zzz_std zzz_sum zzz_sumsq" :: "15 2 20 10 7 30 500" :: Nil
+    }
+
+    "log multiple lines" in {
+      Stats.incr("cats")
+      Stats.incr("dogs", 3)
+      Stats.time("zzz") { Time.now += 10.milliseconds }
+      statsLogger.logStats()
+      Stats.incr("cats")
+      Stats.time("zzz") { Time.now += 20.milliseconds }
+      statsLogger.logStats()
+      getLines() mustEqual "#Fields: cats dogs zzz_avg zzz_count zzz_max zzz_min zzz_std zzz_sum zzz_sumsq" ::
+        "1 3 10 1 10 10 0 10 100" :: "1 0 20 1 20 20 0 20 400" :: Nil
     }
   }
 }
