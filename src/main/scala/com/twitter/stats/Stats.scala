@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.logging.Logger
 import scala.collection.{Map, mutable, immutable}
 import com.twitter.json.{Json, JsonSerializable}
+import com.twitter.xrayspecs.Time
 
 
 trait Stats {
@@ -313,10 +314,10 @@ object Stats extends Stats {
    * Returns how long it took, in milliseconds, to run the function f.
    */
   def duration[T](f: => T): (T, Long) = {
-    val start = System.currentTimeMillis
+    val start = Time.now
     val rv = f
-    val duration = System.currentTimeMillis - start
-    (rv, duration)
+    val duration = Time.now - start
+    (rv, duration.inMilliseconds)
   }
 
   /**
