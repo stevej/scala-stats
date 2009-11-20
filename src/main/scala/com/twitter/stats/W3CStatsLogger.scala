@@ -27,7 +27,6 @@ class W3CStatsLogger(val logger: Logger, val frequencyInSeconds: Int, includeJvm
   def this(logger: Logger, frequencyInSeconds: Int) = this(logger, frequencyInSeconds, true)
 
   val reporter = new W3CReporter(logger)
-  var previousCounterStats = new mutable.HashMap[String, Long]
 
   def runLoop() {
     Thread.sleep(frequencyInSeconds * 1000)
@@ -39,12 +38,9 @@ class W3CStatsLogger(val logger: Logger, val frequencyInSeconds: Int, includeJvm
     if (includeJvmStats) {
       Stats.getJvmStats() foreach { case (key, value) => report("jvm_" + key) = value }
     }
-    Stats.getCounterStats(false) foreach { case (key, value) =>
-      report(key) = (value - previousCounterStats.get(key).getOrElse(0L))
-      previousCounterStats(key) = value
-    }
-    Stats.getGaugeStats(false) foreach { case (key, value) => report(key) = value }
-    Stats.getTimingStats(false) foreach { case (key, timing) =>
+    Stats.getCounterStats(true) foreach { case (key, value) => report(key) = value }
+    Stats.getGaugeStats(true) foreach { case (key, value) => report(key) = value }
+    Stats.getTimingStats(true) foreach { case (key, timing) =>
       report(key + "_count") = timing.count
       report(key + "_min") = timing.minimum
       report(key + "_max") = timing.maximum
