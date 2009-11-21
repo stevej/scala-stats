@@ -72,7 +72,7 @@ object W3CStatsSpec extends Specification {
 
     "map when cleared returns the empty string" in {
       w3c.log("request-uri", "foo")
-      w3c.clear()
+      w3c.clearAll()
       val logline = w3c.log_entry
       // strip out all unfound entries, and remove all whitespace. after that, it should be empty.
       logline.replaceAll("-", "").trim() mustEqual ""

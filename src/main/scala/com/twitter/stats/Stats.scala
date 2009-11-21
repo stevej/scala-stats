@@ -18,165 +18,23 @@ package com.twitter.stats
 
 import java.lang.management._
 import java.util.concurrent.atomic.AtomicLong
-import java.util.logging.Logger
 import scala.collection.{Map, mutable, immutable}
-import com.twitter.json.{Json, JsonSerializable}
+import com.twitter.json.Json
 import com.twitter.xrayspecs.Time
-
-
-trait Stats {
-  /**
-   * Runs the function f and logs that duration, in milliseconds, with the given name.
-   */
-  def time[T](name: String)(f: => T): T
-
-  /**
-   * Runs the function f and logs that duration, in nanoseconds, with the given name.
-   *
-   * When using nanoseconds, be sure to encode your field with that fact. Consider
-   * using the suffix `_ns` in your field.
-   */
-  def timeNanos[T](name: String)(f: => T): T
-
-  /**
-   * Increments a count in the stats.
-   */
-  def incr(name: String, count: Int): Long
-
-  /**
-   * Increments a count in the stats.
-   */
-  def incr(name: String): Long = incr(name, 1)
-}
-
-
-object DevNullStats extends Stats {
-  def time[T](name: String)(f: => T): T = f
-  def timeNanos[T](name: String)(f: => T): T = f
-  def incr(name: String, count: Int): Long = count.toLong
-}
+import net.lag.logging.Logger
 
 
 /**
  * Basic Stats gathering object that returns performance data for the application.
  */
-object Stats extends Stats {
-  val log = Logger.getLogger("Stats")
-
-  /**
-   * Measurement is a base type for collected statistics.
-   */
-  trait Measurement
-
-  /**
-   * A Counter is a measure that simply keeps track of how
-   * many times an event occurred.
-   */
-  class Counter extends Measurement {
-    var value = new AtomicLong
-
-    def incr() = value.addAndGet(1)
-    def incr(n: Int) = value.addAndGet(n)
-    def apply(): Long = value.get()
-    def update(n: Long) = value.set(n)
-    def reset() = update(0L)
-  }
-
-  /**
-   * A pre-calculated timing. E.g. if you have timing stats from an external source but
-   * still want to report them via the Stats interface, then use a TimingStat.
-   */
-  class TimingStat(_count: Int, _maximum: Int, _minimum: Int, _sum: Long, _sumSquares: Long) {
-    def count = _count
-    def minimum = if (_count > 0) _minimum else 0
-    def maximum = if (_count > 0) _maximum else 0
-    def average = if (_count > 0) (_sum / _count).toInt else 0
-    def variance = if (_count > 1) ((_sumSquares - _sum * average) / (_count - 1)).toInt else 0
-    def standardDeviation = Math.sqrt(variance)
-    def sum = _sum
-    def sumSquares = _sumSquares
-
-    def toJson() = {
-      Json.build(immutable.Map("count" -> count, "minimum" -> minimum, "maximum" -> maximum,
-        "average" -> average, "standard_deviation" -> standardDeviation, "sum" -> sum,
-        "sum_squares" -> sumSquares)).toString()
-    }
-
-    override def equals(other: Any) = other match {
-      case t: TimingStat =>
-        t.count == count && t.maximum == maximum && t.minimum == minimum && t.sum == sum && t.sumSquares == sumSquares
-      case _ => false
-    }
-
-    override def toString = "TimingStat(count=%d, maximum=%d, minimum=%d, sum=%d, sum_squares=%d)".format(count, maximum, minimum, sum, sumSquares)
-  }
-
-  /**
-   * A Timing collates durations of an event and can report
-   * min/max/avg along with how often the event occurred.
-   */
-  class Timing extends Measurement {
-    private var maximum = Math.MIN_INT
-    private var minimum = Math.MAX_INT
-    private var sum: Long = 0
-    private var sumSquares: Long = 0
-    private var count: Int = 0
-
-
-    /**
-     * Resets the state of this Timing. Clears the durations and counts collected sofar.
-     */
-    def clear() = synchronized {
-      maximum = Math.MIN_INT
-      minimum = Math.MAX_INT
-      sum = 0
-      sumSquares = 0
-      count = 0
-    }
-
-    /**
-     * Adds a duration to our current Timing.
-     */
-    def add(n: Int): Long = synchronized {
-      if (n > -1) {
-        maximum = n max maximum
-        minimum = n min minimum
-        sum += n
-        sumSquares += (n.toLong * n)
-        count += 1
-      } else {
-        log.warning("Tried to add a negative timing duration. Was the clock adjusted?")
-      }
-      count
-    }
-
-    /**
-     * Evaluates function f, returning value of type T, and logging the duration in the current Timer instance.
-     */
-    def time[T](f: => T): T = {
-      val (rv, duration) = Stats.duration(f)
-      add(duration.asInstanceOf[Int]) // is safe as long as it didn't take longer then 46 days.
-      rv
-    }
-
-    /**
-     * Returns a tuple of (Count, Min, Max, Average) for the measured event.
-     * If `reset` is true, it clears the current event timings also.
-     */
-    def get(reset: Boolean): TimingStat = synchronized {
-      val rv = new TimingStat(count, maximum, minimum, sum, sumSquares)
-      if (reset) clear()
-      rv
-    }
-  }
-
+object Stats extends StatsProvider {
+  val log = Logger.get(getClass.getName)
 
   /**
    * A gauge has an instantaneous value (like memory usage) and is polled whenever stats
    * are collected.
    */
-  trait Gauge extends ((Boolean) => Double) with Measurement
-
+  trait Gauge extends ((Boolean) => Double)
 
   // Maintains a Map of the variables we are tracking and their value.
   private val counterMap = new mutable.HashMap[String, Counter]()
@@ -263,7 +121,7 @@ object Stats extends Stats {
   def buildIncr(name: String): () => Long = { () => incr(name, 1) }
 
   /**
-   * Increments the named counter by <code>by</code>.
+   * Increments the named counter by `by`.
    */
   def incr(name: String, by: Int): Long = {
     getCounter(name).value.addAndGet(by)
@@ -277,10 +135,6 @@ object Stats extends Stats {
     timingStatsFnList += fn
   }
 
-  /**
-   * Creates a Timing object of name and duration and stores
-   * it in the keymap. Returns the total number of timings stored so far.
-   */
   def addTiming(name: String, duration: Int): Long = {
     getTiming(name).add(duration)
   }
@@ -290,24 +144,6 @@ object Stats extends Stats {
    */
   def addTimingStat(name: String, stat: TimingStat) = timingStatsMap.synchronized {
     timingStatsMap += (name -> stat)
-  }
-
-  /**
-   * Times the duration of function f, and adds that duration to a named timing measurement.
-   */
-  def time[T](name: String)(f: => T): T = {
-    val (rv, msec) = duration(f)
-    addTiming(name, msec.toInt)
-    rv
-  }
-
-  /**
-   * Times the duration of function f, and adds that duration to a named timing measurement.
-   */
-  def timeNanos[T](name: String)(f: => T): T = {
-    val (rv, nsec) = durationNanos(f)
-    addTiming(name, nsec.toInt)
-    rv
   }
 
   /**
@@ -362,15 +198,6 @@ object Stats extends Stats {
     out
   }
 
-  /**
-   * Returns a Map[String, Long] of counters and their current values.
-   */
-  def getCounterStats(): Map[String, Long] = getCounterStats(false)
-
-  /**
-   * Returns a Map[String, Long] of counters and their current values.
-   * @param reset whether or not to reset the counters.
-   */
   def getCounterStats(reset: Boolean): Map[String, Long] = {
     val rv = immutable.HashMap(counterMap.map { case (k, v) => (k, v.value.get) }.toList: _*)
     if (reset) {
@@ -381,10 +208,6 @@ object Stats extends Stats {
     rv
   }
 
-  /**
-   * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
-   * cleared, so the next call will return the stats about timings since now.
-   */
   def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
     val out = new mutable.HashMap[String, TimingStat]
 

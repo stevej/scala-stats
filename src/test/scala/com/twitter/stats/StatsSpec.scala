@@ -45,9 +45,9 @@ object StatsSpec extends Specification {
       "empty" in {
         Stats.addTiming("test", 0)
         val test = Stats.getTiming("test")
-        test.get(true) mustEqual new Stats.TimingStat(1, 0, 0, 0, 0)
+        test.get(true) mustEqual new TimingStat(1, 0, 0, 0, 0)
         // the timings list will be empty here:
-        test.get(true) mustEqual new Stats.TimingStat(0, 0, 0, 0, 0)
+        test.get(true) mustEqual new TimingStat(0, 0, 0, 0, 0)
       }
 
       "basic min/max/average" in {
@@ -55,7 +55,7 @@ object StatsSpec extends Specification {
         Stats.addTiming("test", 2)
         Stats.addTiming("test", 3)
         val test = Stats.getTiming("test")
-        test.get(true) mustEqual new Stats.TimingStat(3, 3, 1, 6, 14)
+        test.get(true) mustEqual new TimingStat(3, 3, 1, 6, 14)
       }
 
       "report" in {
@@ -71,7 +71,7 @@ object StatsSpec extends Specification {
       "average of 0" in {
         Stats.addTiming("test", 0)
         val test = Stats.getTiming("test")
-        test.get(true) mustEqual new Stats.TimingStat(1, 0, 0, 0, 0)
+        test.get(true) mustEqual new TimingStat(1, 0, 0, 0, 0)
       }
 
       "ignore negative timings" in {
@@ -79,14 +79,14 @@ object StatsSpec extends Specification {
         Stats.addTiming("test", -1)
         Stats.addTiming("test", Math.MIN_INT)
         val test = Stats.getTiming("test")
-        test.get(true) mustEqual new Stats.TimingStat(1, 1, 1, 1, 1)
+        test.get(true) mustEqual new TimingStat(1, 1, 1, 1, 1)
       }
 
       "boundary timing sizes" in {
         Stats.addTiming("test", Math.MAX_INT)
         Stats.addTiming("test", 5)
         val test = Stats.getTiming("test")
-        test.get(true) mustEqual new Stats.TimingStat(2, Math.MAX_INT, 5, 5L + Math.MAX_INT, 25L + Math.MAX_INT.toLong * Math.MAX_INT)
+        test.get(true) mustEqual new TimingStat(2, Math.MAX_INT, 5, 5L + Math.MAX_INT, 25L + Math.MAX_INT.toLong * Math.MAX_INT)
       }
 
       "handle code blocks" in {

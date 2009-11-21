@@ -30,8 +30,8 @@ import java.text.SimpleDateFormat
  *
  * @param fields The fields, in order, as they will appear in the final w3c log output.
  */
-class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
-  val log = Logger.get
+class W3CStats(val logger: Logger, val fields: Array[String]) extends StatsProvider {
+  val log = Logger.get(getClass.getName)
   val reporter = new W3CReporter(logger)
 
   /**
@@ -51,7 +51,7 @@ class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
   /**
    * Resets this thread's w3c stats knowledge.
    */
-  def clear(): Unit = get().clear()
+  def clearAll(): Unit = get().clear()
 
   /**
    * Private method to ensure that fields being inserted are actually being tracked, throwing an exception otherwise.
@@ -90,18 +90,9 @@ class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
    */
   def log_entry: String = reporter.generateLine(fields, get())
 
-  def time[T](name: String)(f: => T): T = {
-    val (rv, msec) = Stats.duration(f)
-    log(name, msec)
-    Stats.addTiming(name, msec.toInt)
-    rv
-  }
-
-  def timeNanos[T](name: String)(f: => T): T = {
-    val (rv, nsec) = Stats.durationNanos(f)
-    log(name, nsec)
-    Stats.addTiming(name, nsec.toInt)
-    rv
+  def addTiming(name: String, duration: Int): Long = {
+    log(name, duration)
+    Stats.addTiming(name, duration)
   }
 
   def incr(name: String, count: Int) = {
@@ -109,13 +100,16 @@ class W3CStats(val logger: Logger, val fields: Array[String]) extends Stats {
     Stats.incr(name, count)
   }
 
+  def getCounterStats(reset: Boolean) = Stats.getCounterStats(reset)
+  def getTimingStats(reset: Boolean) = Stats.getTimingStats(reset)
+
   /**
    * Coalesce all w3c events (counters, timings, etc.) that happen in this thread within this
    * transaction, and log them as a single line at the end. This is useful for logging everything
    * that happens within an HTTP request/response cycle, or similar.
    */
   def transaction[T](f: => T): T = {
-    clear()
+    clearAll()
     try {
       f
     } finally {
