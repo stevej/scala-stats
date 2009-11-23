@@ -107,6 +107,15 @@ object StatsSpec extends Specification {
         Stats.time("hundred") { for (i <- 0 until 100) x += i }
         Stats.getTimingStats(false)("hundred").count mustEqual 1
       }
+
+      "add bundle of timings at once" in {
+        val timingStat = new TimingStat(3, 20, 10, 45, 725)
+        Stats.addTiming("test", timingStat)
+        Stats.addTiming("test", 25)
+        Stats.getTimingStats(false)("test").count mustEqual 4
+        Stats.getTimingStats(false)("test").average mustEqual 17
+        Stats.getTimingStats(false)("test").standardDeviation mustEqual 7
+      }
     }
 
     "gauges" in {
@@ -145,6 +154,16 @@ object StatsSpec extends Specification {
       val mbean = new StatsMBean
       val names = mbean.getMBeanInfo().getAttributes().toList.map { _.getName() }
       names mustEqual List("counter_widgets", "timing_min_nothing", "timing_max_nothing", "timing_average_nothing", "timing_count_nothing")
+    }
+
+    "fork" in {
+      val collection = Stats.fork()
+      Stats.incr("widgets", 5)
+      collection.getCounterStats(false) mustEqual Map("widgets" -> 5)
+      Stats.getCounterStats(true) mustEqual Map("widgets" -> 5)
+      Stats.incr("widgets", 5)
+      collection.getCounterStats(false) mustEqual Map("widgets" -> 10)
+      Stats.getCounterStats(true) mustEqual Map("widgets" -> 5)
     }
   }
 }

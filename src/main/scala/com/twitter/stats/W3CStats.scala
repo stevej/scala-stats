@@ -95,6 +95,11 @@ class W3CStats(val logger: Logger, val fields: Array[String]) extends StatsProvi
     Stats.addTiming(name, duration)
   }
 
+  def addTiming(name: String, timingStat: TimingStat): Long = {
+    // can't really w3c these.
+    Stats.addTiming(name, timingStat)
+  }
+
   def incr(name: String, count: Int) = {
     log_safe(name, get.getOrElse(name, 0L).asInstanceOf[Long] + count)
     Stats.incr(name, count)

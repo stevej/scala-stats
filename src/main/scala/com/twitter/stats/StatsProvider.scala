@@ -50,6 +50,11 @@ trait StatsProvider {
   def addTiming(name: String, duration: Int): Long
 
   /**
+   * Stores a set of summarized timings.
+   */
+  def addTiming(name: String, timingStat: TimingStat): Long
+
+  /**
    * Increments a count in the stats, returning the new value.
    */
   def incr(name: String, count: Int): Long
@@ -87,11 +92,13 @@ trait StatsProvider {
   def clearAll()
 }
 
+
 /**
  * A StatsProvider that doesn't actually save or report anything.
  */
 object DevNullStats extends StatsProvider {
   def addTiming(name: String, duration: Int) = 0
+  def addTiming(name: String, timingStat: TimingStat) = 0
   def incr(name: String, count: Int): Long = count.toLong
   def getCounterStats(reset: Boolean) = immutable.Map.empty
   def getTimingStats(reset: Boolean) = immutable.Map.empty

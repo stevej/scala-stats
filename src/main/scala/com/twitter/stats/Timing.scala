@@ -59,6 +59,20 @@ class Timing {
   }
 
   /**
+   * Add a summarized set of timings.
+   */
+  def add(timingStat: TimingStat): Long = synchronized {
+    if (timingStat.count > 0) {
+      maximum = timingStat.maximum max maximum
+      minimum = timingStat.minimum min minimum
+      sum += timingStat.sum
+      sumSquares += timingStat.sumSquares
+      count += timingStat.count
+    }
+    count
+  }
+
+  /**
    * Returns a TimingStat for the measured event.
    * @param reset whether to erase the current history afterwards
    */

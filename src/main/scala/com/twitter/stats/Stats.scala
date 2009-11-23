@@ -36,54 +36,53 @@ object Stats extends StatsProvider {
    */
   trait Gauge extends ((Boolean) => Double)
 
-  // Maintains a Map of the variables we are tracking and their value.
-  private val counterMap = new mutable.HashMap[String, Counter]()
-  private val timingMap = new mutable.HashMap[String, Timing]()
-  private val timingStatsMap = new mutable.HashMap[String, TimingStat]()
   private val gaugeMap = new mutable.HashMap[String, Gauge]()
 
-  // Maintains a list of callback functions for fetching TimingStat objects.
-  private var timingStatsFnList = new mutable.ListBuffer[(Boolean) => Map[String, TimingStat]]()
+  private val collection = new StatsCollection
+  private val forkedCollections = new mutable.ListBuffer[StatsCollection]
 
-  def clearAll() = {
-    counterMap.synchronized { counterMap.clear() }
-    timingMap.synchronized { timingMap.clear() }
-    timingStatsMap.synchronized { timingStatsMap.clear() }
+  def addTiming(name: String, duration: Int): Long = {
+    forkedCollections.foreach { _.addTiming(name, duration) }
+    collection.addTiming(name, duration)
+  }
+
+  def addTiming(name: String, timingStat: TimingStat): Long = {
+    forkedCollections.foreach { _.addTiming(name, timingStat) }
+    collection.addTiming(name, timingStat)
+  }
+
+  def incr(name: String, count: Int): Long = {
+    forkedCollections.foreach { _.incr(name, count) }
+    collection.incr(name, count)
+  }
+
+  def getCounterStats(reset: Boolean) = collection.getCounterStats(reset)
+
+  def getTimingStats(reset: Boolean) = collection.getTimingStats(reset)
+
+  def getCounter(name: String): Counter = collection.getCounter(name)
+
+  def getTiming(name: String): Timing = collection.getTiming(name)
+
+  override def clearAll() {
+    collection.clearAll()
+    forkedCollections.foreach { _.clearAll() }
+    forkedCollections.clear()
     gaugeMap.synchronized { gaugeMap.clear() }
-    clearTimingStatsFn()
   }
 
   /**
-   * Removes all timingStats callback functions.
+   * Fork a StatsCollection (of counters and timings) off the main `Stats` object and return it.
+   * The new collection will be updated whenever the primary `Stats` object is, but calls to
+   * `getCounterStats` or `getTimingStats` with `reset=true` will not have cross effects. That is,
+   * reseting `Stats` will not clear out any forked collections, and vice versa.
+   *
+   * This method is not thread-safe. Create forked collections before going multi-threaded.
    */
-  def clearTimingStatsFn() {
-    timingStatsFnList.synchronized { timingStatsFnList.clear() }
-  }
-
-  /**
-   * Find or create a counter with the given name.
-   */
-  def getCounter(name: String): Counter = counterMap.synchronized {
-    counterMap.get(name) match {
-      case Some(counter) => counter
-      case None =>
-        val counter = new Counter
-        counterMap += (name -> counter)
-        counter
-    }
-  }
-
-  /**
-   * Find or create a timing measurement with the given name.
-   */
-  def getTiming(name: String): Timing = timingMap.synchronized {
-    timingMap.get(name) match {
-      case Some(timing) => timing
-      case None =>
-        val timing = new Timing
-        timingMap += (name -> timing)
-        timing
-    }
+  def fork(): StatsCollection = {
+    val x = new StatsCollection
+    forkedCollections += x
+    x
   }
 
   /**
@@ -110,40 +109,9 @@ object Stats extends StatsProvider {
         if (deltaDenom == 0) 0.0 else deltaNom * 1.0 / deltaDenom
       }
     }
-    timingMap.synchronized {
+    gaugeMap.synchronized {
       gaugeMap += (name -> g)
     }
-  }
-
-  /**
-   * Returns a function that increments the named counter by 1.
-   */
-  def buildIncr(name: String): () => Long = { () => incr(name, 1) }
-
-  /**
-   * Increments the named counter by `by`.
-   */
-  def incr(name: String, by: Int): Long = {
-    getCounter(name).value.addAndGet(by)
-  }
-
-  /**
-   * Register a function to be called when you want to collect timing stats.
-   * The Boolean parameter is whether the state should be 'reset'
-   */
-  def registerTimingStatsFn(fn: (Boolean) => Map[String, TimingStat]) = timingStatsFnList.synchronized {
-    timingStatsFnList += fn
-  }
-
-  def addTiming(name: String, duration: Int): Long = {
-    getTiming(name).add(duration)
-  }
-
-  /**
-   * Adds an immutable TimingStat instance with a given name.
-   */
-  def addTimingStat(name: String, stat: TimingStat) = timingStatsMap.synchronized {
-    timingStatsMap += (name -> stat)
   }
 
   /**
@@ -194,31 +162,6 @@ object Stats extends StatsProvider {
 
     val os = ManagementFactory.getOperatingSystemMXBean()
     out += ("num_cpus" -> os.getAvailableProcessors().toLong)
-
-    out
-  }
-
-  def getCounterStats(reset: Boolean): Map[String, Long] = {
-    val rv = immutable.HashMap(counterMap.map { case (k, v) => (k, v.value.get) }.toList: _*)
-    if (reset) {
-      for ((k, v) <- counterMap) {
-        v.reset()
-      }
-    }
-    rv
-  }
-
-  def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
-    val out = new mutable.HashMap[String, TimingStat]
-
-    for ((key, timing) <- timingMap) {
-      out += (key -> timing.get(reset))
-    }
-
-    val stats = timingStatsFnList.flatMap(_(reset).toList)
-    for ((key, timing) <- stats ++ timingStatsMap) {
-      out += (key + new TimingStat(timing.count, timing.minimum, timing.maximum, timing.sum, timing.sumSquares))
-    }
 
     out
   }
