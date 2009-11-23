@@ -26,6 +26,7 @@ import net.lag.logging.Logger
 class W3CStatsLogger(val logger: Logger, val frequencyInSeconds: Int, includeJvmStats: Boolean) extends BackgroundProcess("W3CStatsLogger") {
   def this(logger: Logger, frequencyInSeconds: Int) = this(logger, frequencyInSeconds, true)
 
+  val collection = Stats.fork()
   val reporter = new W3CReporter(logger)
 
   def runLoop() {
@@ -38,9 +39,9 @@ class W3CStatsLogger(val logger: Logger, val frequencyInSeconds: Int, includeJvm
     if (includeJvmStats) {
       Stats.getJvmStats() foreach { case (key, value) => report("jvm_" + key) = value }
     }
-    Stats.getCounterStats(true) foreach { case (key, value) => report(key) = value }
+    collection.getCounterStats(true) foreach { case (key, value) => report(key) = value }
     Stats.getGaugeStats(true) foreach { case (key, value) => report(key) = value }
-    Stats.getTimingStats(true) foreach { case (key, timing) =>
+    collection.getTimingStats(true) foreach { case (key, timing) =>
       report(key + "_count") = timing.count
       report(key + "_min") = timing.minimum
       report(key + "_max") = timing.maximum
