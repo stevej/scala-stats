@@ -17,6 +17,8 @@
 package com.twitter.stats
 
 import scala.collection.mutable
+import com.twitter.xrayspecs.Time
+import com.twitter.xrayspecs.TimeConversions._
 import net.lag.logging.Logger
 
 
@@ -28,9 +30,14 @@ class W3CStatsLogger(val logger: Logger, val frequencyInSeconds: Int, includeJvm
 
   val collection = Stats.fork()
   val reporter = new W3CReporter(logger)
+  var nextRun = Time.now + frequencyInSeconds.seconds
 
   def runLoop() {
-    Thread.sleep(frequencyInSeconds * 1000)
+    val delay = (nextRun - Time.now).inMilliseconds
+    if (delay > 0) {
+      Thread.sleep(delay)
+    }
+    nextRun += frequencyInSeconds.seconds
     logStats()
   }
 
