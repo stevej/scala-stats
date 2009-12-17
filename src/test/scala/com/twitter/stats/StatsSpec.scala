@@ -16,6 +16,7 @@
 
 package com.twitter.stats
 
+import Stats.TimingStat
 import net.lag.extensions._
 import org.specs._
 import scala.collection.immutable
@@ -62,10 +63,10 @@ object StatsSpec extends Specification {
         var x = 0
         Stats.time("hundred") { for (i <- 0 until 100) x += i }
         val timings = Stats.getTimingStats(false)
-        timings.keys.toList mustEqual List("hundred")
-        timings("hundred").count mustEqual 1
-        timings("hundred").minimum mustEqual timings("hundred").average
-        timings("hundred").maximum mustEqual timings("hundred").average
+        timings.keys.toList mustEqual List("hundred_min", "hundred_avg", "hundred_count", "hundred_max")
+        timings("hundred_count") mustEqual 1
+        timings("hundred_min") mustEqual timings("hundred_avg")
+        timings("hundred_max") mustEqual timings("hundred_avg")
       }
 
       "average of 0" in {
@@ -100,13 +101,27 @@ object StatsSpec extends Specification {
       "reset when asked" in {
         var x = 0
         Stats.time("hundred") { for (i <- 0 until 100) x += i }
-        Stats.getTimingStats(false)("hundred").count mustEqual 1
+        Stats.getTimingStats(false)("hundred_count") mustEqual 1
         Stats.time("hundred") { for (i <- 0 until 100) x += i }
-        Stats.getTimingStats(false)("hundred").count mustEqual 2
-        Stats.getTimingStats(true)("hundred").count mustEqual 2
+        Stats.getTimingStats(false)("hundred_count") mustEqual 2
+        Stats.getTimingStats(true)("hundred_count") mustEqual 2
         Stats.time("hundred") { for (i <- 0 until 100) x += i }
-        Stats.getTimingStats(false)("hundred").count mustEqual 1
+        Stats.getTimingStats(false)("hundred_count") mustEqual 1
       }
+
+
+       "timing stats can be added and reflected in Stats.getTimingStats" in {
+
+         var x = 0
+         Stats.time("hundred") { for (i <- 0 until 100) x += 1 }
+         Stats.getTimingStats(false).size mustEqual 4
+
+         Stats.addTimingStat("foobar", TimingStat(1, 0, 0, 0))
+         Stats.getTimingStats(false).size mustEqual 8
+         Stats.getTimingStats(true)("foobar_count") mustEqual 1
+         Stats.addTimingStat("foobar", TimingStat(3, 0, 0, 0))
+         Stats.getTimingStats(false)("foobar_count") mustEqual 3
+       }
     }
 
     "gauges" in {
@@ -144,7 +159,7 @@ object StatsSpec extends Specification {
 
       val mbean = new StatsMBean
       val names = mbean.getMBeanInfo().getAttributes().toList.map { _.getName() }
-      names mustEqual List("counter_widgets", "timing_min_nothing", "timing_max_nothing", "timing_average_nothing", "timing_count_nothing")
+      names mustEqual List("counter_widgets", "timing_nothing_min", "timing_nothing_max", "timing_nothing_avg", "timing_nothing_count")
     }
   }
 }

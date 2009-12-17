@@ -367,19 +367,26 @@ object Stats extends Stats {
    * Returns a Map[String, Long] of timings. If `reset` is true, the collected timings are
    * cleared, so the next call will return the stats about timings since now.
    */
-  def getTimingStats(reset: Boolean): Map[String, TimingStat] = {
-    val out = new mutable.HashMap[String, TimingStat]
+  def getTimingStats(reset: Boolean): Map[String, Int] = {
+    val out = new mutable.HashMap[String, Int]
 
     for ((key, timing) <- timingMap) {
       val (count, minimum, maximum, average) = timing.getCountMinMaxAvg(reset)
-      out += (key -> TimingStat(count, minimum, maximum, average))
+      out += (key + "_count" -> count)
+      out += (key + "_min" -> minimum)
+      out += (key + "_max" -> maximum)
+      out += (key + "_avg" -> average)
     }
 
     val stats = timingStatsFnList.flatMap(_(reset).toList)
     for ((key, timing) <- stats ++ timingStatsMap) {
-      out += (key + TimingStat(timing.count, timing.minimum, timing.maximum, timing.average))
+      out += (key + "_count" -> timing.count)
+      out += (key + "_min" -> timing.minimum)
+      out += (key + "_max" -> timing.maximum)
+      out += (key + "_avg" -> timing.average)
     }
 
+    if (reset) timingStatsMap.clear()
     out
   }
 
