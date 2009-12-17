@@ -26,6 +26,7 @@
 #    Do not insert into ganglia, simply print to stdout.
 
 require 'getoptlong'
+require 'rdoc/ri/ri_paths'
 require 'rdoc/usage'
 require 'socket'
 
